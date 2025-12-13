@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Message, CorrectionResponse } from '../types';
-import { Volume2, AlertCircle, BookOpen, ArrowRight } from 'lucide-react';
+import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
+import { playFrenchTTS } from '../services/geminiService';
 
 interface MessageBubbleProps {
   message: Message;
@@ -8,6 +9,7 @@ interface MessageBubbleProps {
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isUser = message.role === 'user';
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // --- USER MESSAGE (Input Card Style) ---
   if (isUser) {
@@ -41,6 +43,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
   if (!data) return null;
 
+  const handlePlayAudio = async () => {
+    if (!data || isPlaying) return;
+    
+    setIsPlaying(true);
+    try {
+      await playFrenchTTS(data.correctedFrench);
+    } catch (error) {
+      console.error("Failed to play audio:", error);
+      alert("Could not play audio. Please check your connection.");
+    } finally {
+      setIsPlaying(false);
+    }
+  };
+
   return (
     <div className="flex justify-center w-full mb-10">
       <div className="w-full max-w-2xl flex flex-col gap-4">
@@ -56,8 +72,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               </div>
               <p className="text-blue-100 italic mt-2 text-lg">"{data.englishTranslation}"</p>
             </div>
-            <button className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors text-white" title="Listen (Mock)">
-              <Volume2 size={20} />
+            <button 
+              onClick={handlePlayAudio}
+              disabled={isPlaying}
+              className={`p-2 rounded-full transition-colors text-white ${isPlaying ? 'bg-white/40 cursor-wait' : 'bg-white/20 hover:bg-white/30'}`}
+              title="Listen to pronunciation"
+            >
+              {isPlaying ? <Loader2 size={20} className="animate-spin" /> : <Volume2 size={20} />}
             </button>
           </div>
 
