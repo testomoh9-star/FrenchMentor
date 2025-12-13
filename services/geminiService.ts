@@ -64,7 +64,8 @@ export const getChatSession = (): Chat => {
               }
             },
             tutorNotes: { type: Type.STRING, description: "A paragraph of general explanation and grammar tips." }
-          }
+          },
+          propertyOrdering: ["correctedFrench", "englishTranslation", "corrections", "tutorNotes"]
         }
       },
     });
@@ -76,20 +77,38 @@ export const resetChatSession = () => {
   chatSession = null;
 };
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const sendMessageToGemini = async (message: string, language: SupportLanguage): Promise<string> => {
-  const chat = getChatSession();
-  
-  try {
-    // Inject the language instruction into the message without showing it to the user in the UI
-    const promptWithLanguage = `${message}\n\n[System Requirement]: Please provide the 'tutorNotes' and all 'explanation' fields in ${language}.`;
-    
-    // We do not stream here because we need valid JSON to render the UI components correctly.
-    const result = await chat.sendMessage({ message: promptWithLanguage });
-    return result.text || "{}";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    throw error;
+  let currentAttempt = 0;
+
+  while (currentAttempt < MAX_RETRIES) {
+    try {
+      const chat = getChatSession();
+      // Inject the language instruction into the message without showing it to the user in the UI
+      const promptWithLanguage = `${message}\n\n[System Requirement]: Please provide the 'tutorNotes' and all 'explanation' fields in ${language}.`;
+      
+      // We do not stream here because we need valid JSON to render the UI components correctly.
+      const result = await chat.sendMessage({ message: promptWithLanguage });
+      return result.text || "{}";
+    } catch (error) {
+      currentAttempt++;
+      console.warn(`Gemini API Attempt ${currentAttempt} failed:`, error);
+      
+      if (currentAttempt >= MAX_RETRIES) {
+        // Reset session on final failure so user can try again fresh next time
+        resetChatSession();
+        throw error;
+      }
+      
+      // Wait before retrying
+      await delay(RETRY_DELAY * currentAttempt);
+    }
   }
+  return "{}";
 };
 
 // --- Audio / TTS Logic ---
