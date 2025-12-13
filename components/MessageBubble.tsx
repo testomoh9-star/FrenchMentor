@@ -11,6 +11,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isUser = message.role === 'user';
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Helper to detect Arabic characters for RTL support
+  const getTextDirectionProps = (text: string) => {
+    const hasArabic = /[\u0600-\u06FF]/.test(text);
+    return {
+      dir: hasArabic ? 'rtl' : 'ltr',
+      className: hasArabic ? 'text-right font-arabic' : 'text-left'
+    };
+  };
+
   // --- USER MESSAGE (Input Card Style) ---
   if (isUser) {
     return (
@@ -57,6 +66,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     }
   };
 
+  const notesDirProps = getTextDirectionProps(data.tutorNotes);
+
   return (
     <div className="flex justify-center w-full mb-10">
       <div className="w-full max-w-2xl flex flex-col gap-4">
@@ -93,22 +104,28 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 </div>
                 
                 <div className="space-y-3">
-                  {data.corrections.map((item, idx) => (
-                    <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span className="text-red-500 font-medium line-through decoration-2 decoration-red-500/40 bg-red-50 px-2 py-0.5 rounded">
-                          {item.original}
-                        </span>
-                        <ArrowRight size={14} className="text-slate-400" />
-                        <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded">
-                          {item.corrected}
-                        </span>
+                  {data.corrections.map((item, idx) => {
+                    const explanationDirProps = getTextDirectionProps(item.explanation);
+                    return (
+                      <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="text-red-500 font-medium line-through decoration-2 decoration-red-500/40 bg-red-50 px-2 py-0.5 rounded">
+                            {item.original}
+                          </span>
+                          <ArrowRight size={14} className="text-slate-400" />
+                          <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded">
+                            {item.corrected}
+                          </span>
+                        </div>
+                        <p 
+                          className={`text-sm text-slate-600 ml-1 ${explanationDirProps.className}`}
+                          dir={explanationDirProps.dir}
+                        >
+                          {item.explanation}
+                        </p>
                       </div>
-                      <p className="text-sm text-slate-600 ml-1">
-                        {item.explanation}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -128,7 +145,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             <BookOpen size={18} />
             <span>Tutor's Notes</span>
           </div>
-          <p className="text-slate-700 leading-relaxed">
+          <p 
+            className={`text-slate-700 leading-relaxed ${notesDirProps.className}`} 
+            dir={notesDirProps.dir}
+          >
             {data.tutorNotes}
           </p>
         </div>

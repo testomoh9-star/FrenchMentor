@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Message } from './types';
+import { Message, SupportLanguage } from './types';
 import { sendMessageToGemini, resetChatSession } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [language, setLanguage] = useState<SupportLanguage>('English');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -33,8 +34,8 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // We expect a full JSON string response
-      const jsonResponse = await sendMessageToGemini(content);
+      // We expect a full JSON string response. Pass the selected language.
+      const jsonResponse = await sendMessageToGemini(content, language);
       
       const newAiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -68,7 +69,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [language]);
 
   const handleReset = useCallback(() => {
     if (window.confirm("Start a new session?")) {
@@ -79,7 +80,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative font-sans">
-      <Header onReset={handleReset} />
+      <Header onReset={handleReset} language={language} setLanguage={setLanguage} />
 
       <main className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth">
         <div className="max-w-4xl mx-auto h-full">
@@ -95,7 +96,7 @@ const App: React.FC = () => {
                 <div className="flex justify-center w-full my-8">
                   <div className="bg-white px-6 py-4 rounded-full shadow-sm border border-slate-100 flex items-center gap-3">
                     <Loader2 className="animate-spin text-blue-600" size={20} />
-                    <span className="text-slate-600 font-medium">Analyzing your French...</span>
+                    <span className="text-slate-600 font-medium">Analyzing your French... ({language})</span>
                   </div>
                 </div>
               )}

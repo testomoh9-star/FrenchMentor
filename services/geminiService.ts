@@ -1,4 +1,5 @@
 import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
+import { SupportLanguage } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -29,6 +30,8 @@ Logic:
    - **Step B (Translation)**: Translate the (optimized) English to natural Standard French.
    - Set 'correctedFrench' to this French translation.
    - Use 'tutorNotes' to primarily explain the French vocabulary/grammar choices used in the translation. You may briefly mention English improvements if relevant to the context.
+
+IMPORTANT: The user will specify a "Response Language" in the prompt. You MUST write the content of 'tutorNotes' and the 'explanation' fields in that specified language (English, French, or Arabic).
 
 Output **JSON** only.
 `;
@@ -73,12 +76,15 @@ export const resetChatSession = () => {
   chatSession = null;
 };
 
-export const sendMessageToGemini = async (message: string): Promise<string> => {
+export const sendMessageToGemini = async (message: string, language: SupportLanguage): Promise<string> => {
   const chat = getChatSession();
   
   try {
+    // Inject the language instruction into the message without showing it to the user in the UI
+    const promptWithLanguage = `${message}\n\n[System Requirement]: Please provide the 'tutorNotes' and all 'explanation' fields in ${language}.`;
+    
     // We do not stream here because we need valid JSON to render the UI components correctly.
-    const result = await chat.sendMessage({ message });
+    const result = await chat.sendMessage({ message: promptWithLanguage });
     return result.text || "{}";
   } catch (error) {
     console.error("Gemini API Error:", error);

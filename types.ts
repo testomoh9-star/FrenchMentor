@@ -1,3 +1,5 @@
+export type SupportLanguage = 'English' | 'French' | 'Arabic';
+
 export interface CorrectionItem {
   original: string;
   corrected: string;
