@@ -1,5 +1,7 @@
 export type SupportLanguage = 'English' | 'French' | 'Arabic';
 
+export type ModelID = 'gemini-flash-lite-latest' | 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
+
 export interface CorrectionItem {
   original: string;
   corrected: string;
@@ -24,4 +26,5 @@ export interface Message {
 export interface ChatState {
   messages: Message[];
   isLoading: boolean;
+  selectedModel: ModelID;
 }

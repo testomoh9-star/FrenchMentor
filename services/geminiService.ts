@@ -1,69 +1,80 @@
 import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
-import { SupportLanguage } from "../types";
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+import { SupportLanguage, ModelID } from "../types";
 
 const SYSTEM_INSTRUCTION = `
-You are "FrenchMentor", an expert French language tutor.
-Your goal is to correct user inputs or translate them, providing structured feedback.
+You are "FrenchMentor", an elite French language tutor known for meticulous, word-by-word feedback and deep pedagogical explanations.
+Your goal is to transform user input into perfect French while acting as a supportive teacher.
 
-Logic:
-1. **Analyze**: Check if the input is primarily French or English.
+### OPERATIONAL LOGIC:
 
-2. **If French Input**:
-   - Correct grammar, spelling, and syntax to Standard French.
-   - Identify specific errors.
-   - For each error, populate the 'corrections' list with the 'original' mistake, the 'corrected' version, and a brief 'explanation'.
-   - Set 'correctedFrench' to the fully corrected French sentence.
-   - Set 'englishTranslation' to the English translation of that corrected sentence.
-   - Write helpful 'tutorNotes' summarizing the main French grammar rules applied.
+1. **Step 1: Language Detection**
+   - Determine if the user input is primarily English or French.
 
-3. **If English Input**:
-   - **Step A (English Optimization)**: Check the user's English input for grammar, spelling, or awkward phrasing errors.
-   - If errors are found:
-     - Add them to the 'corrections' list.
-     - In the 'explanation' field, explicitly start with "English Improvement:" to distinguish it.
-     - Set 'englishTranslation' to the *corrected/optimized* English version.
-   - If no errors:
-     - Set 'englishTranslation' to the original input.
-   
-   - **Step B (Translation)**: Translate the (optimized) English to natural Standard French.
-   - Set 'correctedFrench' to this French translation.
-   - Use 'tutorNotes' to primarily explain the French vocabulary/grammar choices used in the translation. You may briefly mention English improvements if relevant to the context.
+2. **Step 2: English-to-French Path (If Input is English)**
+   - **Fix English First**: Before translating, identify any grammar/spelling errors in the user's English (e.g., "i" to "I", missing articles).
+   - **Corrections List**: For every English fix, add an item to 'corrections'.
+     - 'original': the mistake.
+     - 'corrected': the fixed English word/phrase.
+     - 'explanation': MUST start with "English Improvement: " followed by a brief reason in the [Response Language].
+   - **Translation**: Translate the *corrected* English into natural Standard French.
+   - **Fields**: 
+     - 'correctedFrench': The final French translation.
+     - 'englishTranslation': The corrected/optimized English sentence.
 
-IMPORTANT: The user will specify a "Response Language" in the prompt. You MUST write the content of 'tutorNotes' and the 'explanation' fields in that specified language (English, French, or Arabic).
+3. **Step 3: French-Correction Path (If Input is French)**
+   - **Granular Fixes**: Identify every spelling, grammar, or syntax error. 
+   - **DO NOT GROUP**: If "j'ai aller" is wrong, create two items: one for "ai" -> "suis" and one for "aller" -> "allé".
+   - **Fields**:
+     - 'correctedFrench': The perfectly fixed French sentence.
+     - 'englishTranslation': A natural English translation of that fixed sentence.
 
-Output **JSON** only.
+4. **Step 4: Tutor's Notes (CONCISE BUT STRUCTURED)**
+   - **Volume Control**: Keep this section to 2-4 high-impact sentences (about 50-70% of the previous detail).
+   - **Organization**: Use a professional tone. Explain the "Why" using logical transitions (e.g., "Note that...", "Specifically...", "In French...").
+   - **Content**: Focus only on the 1 or 2 most important grammatical points from the input.
+
+5. **Step 5: Response Language**
+   - You MUST write the 'tutorNotes' and all 'explanation' fields in the [Response Language] specified in the prompt.
+
+### OUTPUT RULES:
+- Output valid JSON only.
+- Tone: Professional, encouraging, and detailed.
+- Ensure 'original' and 'corrected' fields contain only the specific word or short phrase being fixed.
 `;
 
 let chatSession: Chat | null = null;
+let currentModelId: ModelID | null = null;
 
-export const getChatSession = (): Chat => {
-  if (!chatSession) {
+export const getChatSession = (modelId: ModelID): Chat => {
+  // If model changed, we MUST reset the session
+  if (!chatSession || currentModelId !== modelId) {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    currentModelId = modelId;
     chatSession = ai.chats.create({
-      model: 'gemini-2.5-flash',
+      model: modelId,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.4, // Lower temperature for consistent JSON
+        temperature: 0.1, 
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             correctedFrench: { type: Type.STRING, description: "The corrected or translated French sentence." },
-            englishTranslation: { type: Type.STRING, description: "English translation of the French sentence (or the corrected English input)." },
+            englishTranslation: { type: Type.STRING, description: "English translation of the French sentence." },
             corrections: {
               type: Type.ARRAY,
-              description: "List of specific corrections made (French or English).",
+              description: "List of specific word-level corrections.",
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  original: { type: Type.STRING, description: "The specific word/phrase that was incorrect." },
-                  corrected: { type: Type.STRING, description: "The corrected version of that specific word/phrase." },
-                  explanation: { type: Type.STRING, description: "Brief grammar rule explaining the fix." }
-                }
+                  original: { type: Type.STRING, description: "The incorrect word/phrase." },
+                  corrected: { type: Type.STRING, description: "The fixed word/phrase." },
+                  explanation: { type: Type.STRING, description: "The grammar rule or reason for the fix." }
+                },
+                required: ["original", "corrected", "explanation"]
               }
             },
-            tutorNotes: { type: Type.STRING, description: "A paragraph of general explanation and grammar tips." }
+            tutorNotes: { type: Type.STRING, description: "A detailed, structured pedagogical summary of the grammar lessons." }
           },
           propertyOrdering: ["correctedFrench", "englishTranslation", "corrections", "tutorNotes"]
         }
@@ -75,23 +86,22 @@ export const getChatSession = (): Chat => {
 
 export const resetChatSession = () => {
   chatSession = null;
+  currentModelId = null;
 };
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const sendMessageToGemini = async (message: string, language: SupportLanguage): Promise<string> => {
+export const sendMessageToGemini = async (message: string, language: SupportLanguage, modelId: ModelID): Promise<string> => {
   let currentAttempt = 0;
 
   while (currentAttempt < MAX_RETRIES) {
     try {
-      const chat = getChatSession();
-      // Inject the language instruction into the message without showing it to the user in the UI
-      const promptWithLanguage = `${message}\n\n[System Requirement]: Please provide the 'tutorNotes' and all 'explanation' fields in ${language}.`;
+      const chat = getChatSession(modelId);
+      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Instruction]: Correct English errors first if applicable. Ensure word-by-word granularity. Keep tutorNotes to 3-4 structured sentences.`;
       
-      // We do not stream here because we need valid JSON to render the UI components correctly.
       const result = await chat.sendMessage({ message: promptWithLanguage });
       return result.text || "{}";
     } catch (error) {
@@ -99,12 +109,10 @@ export const sendMessageToGemini = async (message: string, language: SupportLang
       console.warn(`Gemini API Attempt ${currentAttempt} failed:`, error);
       
       if (currentAttempt >= MAX_RETRIES) {
-        // Reset session on final failure so user can try again fresh next time
         resetChatSession();
         throw error;
       }
       
-      // Wait before retrying
       await delay(RETRY_DELAY * currentAttempt);
     }
   }
@@ -144,6 +152,7 @@ async function decodeAudioData(
 
 export const playFrenchTTS = async (text: string): Promise<void> => {
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],
@@ -173,13 +182,9 @@ export const playFrenchTTS = async (text: string): Promise<void> => {
     source.connect(outputNode);
     source.start();
     
-    // Return a promise that resolves when audio ends
     return new Promise((resolve) => {
         source.onended = () => {
             resolve();
-            // Optional: close context after a delay or keep it. 
-            // For simple usage, letting it garbage collect or closing it is fine.
-            // outputAudioContext.close(); 
         };
     });
 
