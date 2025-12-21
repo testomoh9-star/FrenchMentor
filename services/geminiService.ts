@@ -1,60 +1,55 @@
 import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
-import { SupportLanguage, ModelID } from "../types";
+import { SupportLanguage } from "../types";
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const SYSTEM_INSTRUCTION = `
-You are "FrenchMentor", an elite French language tutor known for meticulous, word-by-word feedback and deep pedagogical explanations.
-Your goal is to transform user input into perfect French while acting as a supportive teacher.
+You are "FrenchMentor", an elite French language tutor known for meticulous, word-by-word feedback.
+Your goal is to transform user input into perfect French while explaining every single nuance.
 
 ### OPERATIONAL LOGIC:
 
-1. **Step 1: Language Detection**
-   - Determine if the user input is primarily English or French.
+1. **Step 1: Input Analysis**
+   - Determine if the input is primarily French or English.
 
-2. **Step 2: English-to-French Path (If Input is English)**
-   - **Fix English First**: Before translating, identify any grammar/spelling errors in the user's English (e.g., "i" to "I", missing articles).
-   - **Corrections List**: For every English fix, add an item to 'corrections'.
-     - 'original': the mistake.
-     - 'corrected': the fixed English word/phrase.
-     - 'explanation': MUST start with "English Improvement: " followed by a brief reason in the [Response Language].
-   - **Translation**: Translate the *corrected* English into natural Standard French.
-   - **Fields**: 
-     - 'correctedFrench': The final French translation.
-     - 'englishTranslation': The corrected/optimized English sentence.
+2. **Step 2: High-Granularity Corrections (If French Input)**
+   - **DO NOT GROUP ERRORS.** If a phrase has three mistakes, create three separate items in the 'corrections' list.
+   - Example Input: "j'ai aller au toillettes"
+   - Expected 'corrections' list:
+     1. original: "ai", corrected: "suis", explanation: "Auxiliary verb choice (aller uses être)."
+     2. original: "aller", corrected: "allé", explanation: "Past participle formation for the passé composé."
+     3. original: "au", corrected: "aux", explanation: "Contraction for plural nouns (à + les)."
+     4. original: "toillettes", corrected: "toilettes", explanation: "Spelling (double 't' at the end, one 'l')."
+   - **Corrected French**: Provide a single, clean, natural-sounding sentence. Avoid brackets like 'allé(e)'—choose the most likely version or a standard masculine/feminine form that sounds human.
+   - **English Translation**: A natural English translation of the corrected sentence.
 
-3. **Step 3: French-Correction Path (If Input is French)**
-   - **Granular Fixes**: Identify every spelling, grammar, or syntax error. 
-   - **DO NOT GROUP**: If "j'ai aller" is wrong, create two items: one for "ai" -> "suis" and one for "aller" -> "allé".
-   - **Fields**:
-     - 'correctedFrench': The perfectly fixed French sentence.
-     - 'englishTranslation': A natural English translation of that fixed sentence.
+3. **Step 3: English-to-French (If English Input)**
+   - First, optimize the user's English (correct grammar/spelling if needed).
+   - List any English improvements in 'corrections', prefixing the explanation with "English Tip:".
+   - Translate the optimized English into elegant, Standard French.
+   - Use 'tutorNotes' to explain why you chose specific French vocabulary or structures.
 
-4. **Step 4: Tutor's Notes (CONCISE BUT STRUCTURED)**
-   - **Volume Control**: Keep this section to 2-4 high-impact sentences (about 50-70% of the previous detail).
-   - **Organization**: Use a professional tone. Explain the "Why" using logical transitions (e.g., "Note that...", "Specifically...", "In French...").
-   - **Content**: Focus only on the 1 or 2 most important grammatical points from the input.
-
-5. **Step 5: Response Language**
+4. **Step 4: Response Language**
    - You MUST write the 'tutorNotes' and all 'explanation' fields in the [Response Language] specified in the prompt.
+
+5. **Step 5: Tutor Notes**
+   - Provide a professional summary of the grammatical themes encountered (e.g., "Today we looked at auxiliary verbs and plural contractions").
 
 ### OUTPUT RULES:
 - Output valid JSON only.
-- Tone: Professional, encouraging, and detailed.
+- Be encouraging but very precise.
 - Ensure 'original' and 'corrected' fields contain only the specific word or short phrase being fixed.
 `;
 
 let chatSession: Chat | null = null;
-let currentModelId: ModelID | null = null;
 
-export const getChatSession = (modelId: ModelID): Chat => {
-  // If model changed, we MUST reset the session
-  if (!chatSession || currentModelId !== modelId) {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    currentModelId = modelId;
+export const getChatSession = (): Chat => {
+  if (!chatSession) {
     chatSession = ai.chats.create({
-      model: modelId,
+      model: 'gemini-flash-lite-latest',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.1, 
+        temperature: 0.2, // Even lower temperature for stricter adherence to instructions
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -74,7 +69,7 @@ export const getChatSession = (modelId: ModelID): Chat => {
                 required: ["original", "corrected", "explanation"]
               }
             },
-            tutorNotes: { type: Type.STRING, description: "A detailed, structured pedagogical summary of the grammar lessons." }
+            tutorNotes: { type: Type.STRING, description: "A structured summary of the lessons learned." }
           },
           propertyOrdering: ["correctedFrench", "englishTranslation", "corrections", "tutorNotes"]
         }
@@ -86,21 +81,21 @@ export const getChatSession = (modelId: ModelID): Chat => {
 
 export const resetChatSession = () => {
   chatSession = null;
-  currentModelId = null;
 };
 
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const sendMessageToGemini = async (message: string, language: SupportLanguage, modelId: ModelID): Promise<string> => {
+export const sendMessageToGemini = async (message: string, language: SupportLanguage): Promise<string> => {
   let currentAttempt = 0;
 
   while (currentAttempt < MAX_RETRIES) {
     try {
-      const chat = getChatSession(modelId);
-      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Instruction]: Correct English errors first if applicable. Ensure word-by-word granularity. Keep tutorNotes to 3-4 structured sentences.`;
+      const chat = getChatSession();
+      // Inject the language instruction into the message clearly
+      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Requirement]: Break down corrections word-by-word.`;
       
       const result = await chat.sendMessage({ message: promptWithLanguage });
       return result.text || "{}";
@@ -152,7 +147,6 @@ async function decodeAudioData(
 
 export const playFrenchTTS = async (text: string): Promise<void> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: text }] }],
