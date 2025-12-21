@@ -4,41 +4,30 @@ import { SupportLanguage } from "../types";
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const SYSTEM_INSTRUCTION = `
-You are "FrenchMentor", an elite French language tutor known for meticulous, word-by-word feedback.
-Your goal is to transform user input into perfect French while explaining every single nuance.
+You are "FrenchMentor", an elite French language tutor. You help users improve their French through correction or translation.
 
-### OPERATIONAL LOGIC:
+### CORE OPERATIONAL LOGIC:
 
-1. **Step 1: Input Analysis**
-   - Determine if the input is primarily French or English.
+1. **Step 1: Response Language (CRITICAL)**
+   - The user has selected a System Language ([Response Language]).
+   - ALL 'explanation' fields in the 'corrections' list MUST be written in the [Response Language].
+   - The 'tutorNotes' MUST be written in the [Response Language].
+   - If [Response Language] is Arabic, use formal Modern Standard Arabic for explanations.
 
-2. **Step 2: High-Granularity Corrections (If French Input)**
-   - **DO NOT GROUP ERRORS.** If a phrase has three mistakes, create three separate items in the 'corrections' list.
-   - Example Input: "j'ai aller au toillettes"
-   - Expected 'corrections' list:
-     1. original: "ai", corrected: "suis", explanation: "Auxiliary verb choice (aller uses être)."
-     2. original: "aller", corrected: "allé", explanation: "Past participle formation for the passé composé."
-     3. original: "au", corrected: "aux", explanation: "Contraction for plural nouns (à + les)."
-     4. original: "toillettes", corrected: "toilettes", explanation: "Spelling (double 't' at the end, one 'l')."
-   - **Corrected French**: Provide a single, clean, natural-sounding sentence. Avoid brackets like 'allé(e)'—choose the most likely version or a standard masculine/feminine form that sounds human.
-   - **English Translation**: A natural English translation of the corrected sentence.
+2. **Step 2: Task Execution**
+   - **Scenario A (Input is French)**: Meticulously find every error (spelling, grammar, gender agreement). List them item-by-item in 'corrections'.
+   - **Scenario B (Input is English or Arabic)**: Translate the input into natural, Standard French. Use 'corrections' to explain why specific French structures were chosen (prefix with "Translation Tip:").
 
-3. **Step 3: English-to-French (If English Input)**
-   - First, optimize the user's English (correct grammar/spelling if needed).
-   - List any English improvements in 'corrections', prefixing the explanation with "English Tip:".
-   - Translate the optimized English into elegant, Standard French.
-   - Use 'tutorNotes' to explain why you chose specific French vocabulary or structures.
-
-4. **Step 4: Response Language**
-   - You MUST write the 'tutorNotes' and all 'explanation' fields in the [Response Language] specified in the prompt.
-
-5. **Step 5: Tutor Notes**
-   - Provide a professional summary of the grammatical themes encountered (e.g., "Today we looked at auxiliary verbs and plural contractions").
+3. **Step 3: Output Formatting**
+   - **correctedFrench**: The final perfect French sentence.
+   - **englishTranslation**: A natural English translation of that sentence (Always English).
+   - **corrections**: A list of objects {original, corrected, explanation}.
+   - **tutorNotes**: A brief pedagogical summary (2-4 sentences) in the [Response Language].
 
 ### OUTPUT RULES:
 - Output valid JSON only.
-- Be encouraging but very precise.
-- Ensure 'original' and 'corrected' fields contain only the specific word or short phrase being fixed.
+- DO NOT use English for explanations if the [Response Language] is French or Arabic.
+- Be precise and professional.
 `;
 
 let chatSession: Chat | null = null;
@@ -49,7 +38,7 @@ export const getChatSession = (): Chat => {
       model: 'gemini-flash-lite-latest',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.2, // Even lower temperature for stricter adherence to instructions
+        temperature: 0.1, 
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -64,12 +53,12 @@ export const getChatSession = (): Chat => {
                 properties: {
                   original: { type: Type.STRING, description: "The incorrect word/phrase." },
                   corrected: { type: Type.STRING, description: "The fixed word/phrase." },
-                  explanation: { type: Type.STRING, description: "The grammar rule or reason for the fix." }
+                  explanation: { type: Type.STRING, description: "The grammar rule or reason for the fix in the Response Language." }
                 },
                 required: ["original", "corrected", "explanation"]
               }
             },
-            tutorNotes: { type: Type.STRING, description: "A structured summary of the lessons learned." }
+            tutorNotes: { type: Type.STRING, description: "A summary of the lesson in the Response Language." }
           },
           propertyOrdering: ["correctedFrench", "englishTranslation", "corrections", "tutorNotes"]
         }
@@ -83,10 +72,7 @@ export const resetChatSession = () => {
   chatSession = null;
 };
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000;
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const MAX_RETRIES = 2;
 
 export const sendMessageToGemini = async (message: string, language: SupportLanguage): Promise<string> => {
   let currentAttempt = 0;
@@ -94,21 +80,16 @@ export const sendMessageToGemini = async (message: string, language: SupportLang
   while (currentAttempt < MAX_RETRIES) {
     try {
       const chat = getChatSession();
-      // Inject the language instruction into the message clearly
-      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Requirement]: Break down corrections word-by-word.`;
+      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Requirement]: Strictly provide all explanations and notes in ${language}.`;
       
       const result = await chat.sendMessage({ message: promptWithLanguage });
       return result.text || "{}";
     } catch (error) {
       currentAttempt++;
-      console.warn(`Gemini API Attempt ${currentAttempt} failed:`, error);
-      
       if (currentAttempt >= MAX_RETRIES) {
         resetChatSession();
         throw error;
       }
-      
-      await delay(RETRY_DELAY * currentAttempt);
     }
   }
   return "{}";
@@ -161,9 +142,7 @@ export const playFrenchTTS = async (text: string): Promise<void> => {
     });
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) {
-        throw new Error("No audio data returned from Gemini TTS");
-    }
+    if (!base64Audio) throw new Error("No audio data");
 
     const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
     const outputNode = outputAudioContext.destination;
@@ -177,11 +156,8 @@ export const playFrenchTTS = async (text: string): Promise<void> => {
     source.start();
     
     return new Promise((resolve) => {
-        source.onended = () => {
-            resolve();
-        };
+        source.onended = () => resolve();
     });
-
   } catch (error) {
     console.error("TTS Error:", error);
     throw error;

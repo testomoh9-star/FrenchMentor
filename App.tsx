@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Message, SupportLanguage } from './types';
+import { Message, SupportLanguage, UI_TRANSLATIONS } from './types';
 import { sendMessageToGemini, resetChatSession } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -12,8 +12,10 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [language, setLanguage] = useState<SupportLanguage>('English');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const t = UI_TRANSLATIONS[language];
+  const isRtl = language === 'Arabic';
 
-  // Auto-scroll to bottom when messages change
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -34,7 +36,6 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // We expect a full JSON string response. Pass the selected language.
       const jsonResponse = await sendMessageToGemini(content, language);
       
       const newAiMessage: Message = {
@@ -48,12 +49,11 @@ const App: React.FC = () => {
       
     } catch (error) {
       console.error("Failed to send message", error);
-      // Fallback JSON for error state to keep UI consistent or handle gracefully
       const errorJson = JSON.stringify({
          correctedFrench: "Error",
          englishTranslation: "Could not process request",
          corrections: [],
-         tutorNotes: "Sorry, I encountered an error. Please try again."
+         tutorNotes: "Désolé, j'ai rencontré une erreur. Veuillez réessayer."
       });
 
       setMessages((prev) => [
@@ -72,31 +72,31 @@ const App: React.FC = () => {
   }, [language]);
 
   const handleReset = useCallback(() => {
-    if (window.confirm("Start a new session?")) {
+    if (window.confirm(t.resetConfirm)) {
       setMessages([]);
       resetChatSession();
     }
-  }, []);
+  }, [t]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative font-sans">
+    <div className={`flex flex-col h-full bg-slate-50 relative font-sans ${isRtl ? 'font-arabic' : ''}`}>
       <Header onReset={handleReset} language={language} setLanguage={setLanguage} />
 
       <main className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth">
         <div className="max-w-4xl mx-auto h-full">
           {messages.length === 0 ? (
-            <EmptyState onSuggestionClick={handleSendMessage} />
+            <EmptyState onSuggestionClick={handleSendMessage} language={language} />
           ) : (
             <div className="pb-20">
               {messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble key={msg.id} message={msg} language={language} />
               ))}
               
               {isLoading && (
-                <div className="flex justify-center w-full my-8">
+                <div className={`flex justify-center w-full my-8 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
                   <div className="bg-white px-6 py-4 rounded-full shadow-sm border border-slate-100 flex items-center gap-3">
                     <Loader2 className="animate-spin text-blue-600" size={20} />
-                    <span className="text-slate-600 font-medium">Analyzing your French... ({language})</span>
+                    <span className="text-slate-600 font-medium">{t.analyzing}</span>
                   </div>
                 </div>
               )}
@@ -107,7 +107,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <InputArea onSend={handleSendMessage} isLoading={isLoading} />
+      <InputArea onSend={handleSendMessage} isLoading={isLoading} language={language} />
     </div>
   );
 };
