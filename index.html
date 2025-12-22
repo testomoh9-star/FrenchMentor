@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>French Tutor AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -13,20 +14,23 @@
       .font-arabic {
         font-family: 'Noto Sans Arabic', sans-serif;
       }
+      /* Safe area padding for modern mobile browsers */
+      .safe-top {
+        padding-top: env(safe-area-inset-top);
+      }
+      .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
       }
       ::-webkit-scrollbar-track {
         background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
         background: #cbd5e1; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
+        border-radius: 10px;
       }
     </style>
 <script type="importmap">

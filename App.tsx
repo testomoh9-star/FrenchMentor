@@ -193,22 +193,22 @@ const App: React.FC = () => {
         className="flex-1 overflow-y-auto scroll-smooth flex flex-col"
       >
         {activeTab === 'practice' ? (
-          <div className="max-w-4xl mx-auto w-full px-4 py-8 flex-1 flex flex-col">
+          <div className="max-w-4xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-8 flex-1 flex flex-col">
             {messages.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <EmptyState onSuggestionClick={handleSendMessage} language={language} />
               </div>
             ) : (
-              <div className="space-y-6 pb-4">
+              <div className="space-y-4 sm:space-y-6 pb-2">
                 {messages.map((msg) => (
                   <MessageBubble key={msg.id} message={msg} language={language} />
                 ))}
                 
                 {isLoading && (
-                  <div className={`flex justify-center w-full my-8 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
-                    <div className="bg-white/80 backdrop-blur-sm px-6 py-4 rounded-full shadow-md border border-slate-100 flex items-center gap-3 animate-pulse">
-                      <Loader2 className="animate-spin text-blue-600" size={20} />
-                      <span className="text-slate-600 font-bold tracking-tight">{t.analyzing}</span>
+                  <div className={`flex justify-center w-full my-4 sm:my-8 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+                    <div className="bg-white/90 backdrop-blur-sm px-4 sm:px-6 py-3 sm:py-4 rounded-full shadow-md border border-slate-100 flex items-center gap-2 sm:gap-3 animate-pulse">
+                      <Loader2 className="animate-spin text-blue-600" size={18} />
+                      <span className="text-slate-600 font-bold tracking-tight text-sm sm:text-base">{t.analyzing}</span>
                     </div>
                   </div>
                 )}
