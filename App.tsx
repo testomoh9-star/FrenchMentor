@@ -1,6 +1,6 @@
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, MistakeRecord } from './types';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse } from './types';
 import { sendMessageToGemini, resetChatSession } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -47,37 +47,35 @@ const App: React.FC = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
 
-  const scrollToBottom = () => {
-    if (activeTab === 'practice') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (instant = false) => {
+    if (activeTab === 'practice' && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: instant ? 'auto' : 'smooth'
+      });
     }
   };
 
-  // Persist messages whenever they change
+  // Persist messages
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(messages));
     scrollToBottom();
   }, [messages, activeTab]);
 
-  // Persist stats whenever they change
+  // Persist stats
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
   }, [stats]);
 
-  // Persist language whenever it changes
+  // Persist language
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_LANGUAGE, language);
   }, [language]);
-
-  // Ensure we scroll to bottom when loading starts/ends
-  useEffect(() => {
-    scrollToBottom();
-  }, [isLoading]);
 
   const updateStatsFromResponse = (responseJson: string) => {
     try {
@@ -89,7 +87,7 @@ const App: React.FC = () => {
         const newHistory = [...prev.history];
 
         data.corrections.forEach(c => {
-          newCategories[c.category] = (newCategories[c.category] || 0) + 1;
+          newCategories[c.category] = (Number(newCategories[c.category]) || 0) + 1;
           newHistory.push({
             original: c.original,
             corrected: c.corrected,
@@ -103,7 +101,6 @@ const App: React.FC = () => {
           totalCorrections: prev.totalCorrections + data.corrections.length,
           categories: newCategories,
           history: newHistory,
-          // Placeholder for sparks logic later
         };
       });
     } catch (e) {
@@ -112,6 +109,9 @@ const App: React.FC = () => {
   };
 
   const handleSendMessage = useCallback(async (content: string) => {
+    // Check sparks
+    if (stats.sparks < 2) return;
+
     const newUserMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -121,6 +121,9 @@ const App: React.FC = () => {
 
     setMessages((prev) => [...prev, newUserMessage]);
     setIsLoading(true);
+
+    // Deduct sparks immediately for feedback
+    setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - 2) }));
 
     try {
       const jsonResponse = await sendMessageToGemini(content, language, messages);
@@ -157,7 +160,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [language, messages]);
+  }, [language, messages, stats.sparks]);
 
   const handleReset = useCallback(() => {
     if (window.confirm(t.resetConfirm)) {
@@ -176,15 +179,23 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-full bg-slate-50 relative font-sans ${isRtl ? 'font-arabic' : ''}`}>
-      <Header onReset={handleReset} language={language} setLanguage={setLanguage} />
+      <Header 
+        onReset={handleReset} 
+        language={language} 
+        setLanguage={setLanguage} 
+        sparks={stats.sparks}
+      />
 
-      <main className="flex-1 overflow-y-auto scroll-smooth">
+      <main 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto scroll-smooth flex flex-col"
+      >
         {activeTab === 'practice' ? (
-          <div className="max-w-4xl mx-auto h-full px-4 py-6">
+          <div className="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
             {messages.length === 0 ? (
               <EmptyState onSuggestionClick={handleSendMessage} language={language} />
             ) : (
-              <div className="pb-24">
+              <div className="space-y-4">
                 {messages.map((msg) => (
                   <MessageBubble key={msg.id} message={msg} language={language} />
                 ))}
@@ -197,8 +208,6 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 )}
-                
-                <div ref={messagesEndRef} />
               </div>
             )}
           </div>
@@ -207,29 +216,36 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Conditional Footer/Input */}
-      {activeTab === 'practice' && (
-        <InputArea onSend={handleSendMessage} isLoading={isLoading} language={language} />
-      )}
+      {/* Footer Container: Combines Input and Nav to prevent overlap */}
+      <footer className="shrink-0 bg-white">
+        {activeTab === 'practice' && (
+          <InputArea 
+            onSend={handleSendMessage} 
+            isLoading={isLoading} 
+            language={language} 
+            sparks={stats.sparks}
+          />
+        )}
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-200 px-6 py-3 flex justify-around items-center z-50">
-        <button 
-          onClick={() => setActiveTab('practice')}
-          className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'practice' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <MessageSquare size={24} fill={activeTab === 'practice' ? 'currentColor' : 'none'} fillOpacity={0.1} />
-          <span className="text-[10px] font-bold uppercase tracking-widest">{t.navPractice}</span>
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('brain')}
-          className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'brain' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-        >
-          <Brain size={24} fill={activeTab === 'brain' ? 'currentColor' : 'none'} fillOpacity={0.1} />
-          <span className="text-[10px] font-bold uppercase tracking-widest">{t.navBrain}</span>
-        </button>
-      </nav>
+        {/* Bottom Navigation */}
+        <nav className="bg-white border-t border-slate-200 px-6 py-3 flex justify-around items-center">
+          <button 
+            onClick={() => setActiveTab('practice')}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeTab === 'practice' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            <MessageSquare size={24} fill={activeTab === 'practice' ? 'currentColor' : 'none'} fillOpacity={0.1} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">{t.navPractice}</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('brain')}
+            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeTab === 'brain' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            <Brain size={24} fill={activeTab === 'brain' ? 'currentColor' : 'none'} fillOpacity={0.1} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">{t.navBrain}</span>
+          </button>
+        </nav>
+      </footer>
     </div>
   );
 };

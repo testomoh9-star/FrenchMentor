@@ -1,20 +1,22 @@
+
 import React from 'react';
-import { Languages, RefreshCw, ChevronDown } from 'lucide-react';
+import { Languages, RefreshCw, ChevronDown, Zap } from 'lucide-react';
 import { SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface HeaderProps {
   onReset: () => void;
   language: SupportLanguage;
   setLanguage: (lang: SupportLanguage) => void;
+  sparks: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ onReset, language, setLanguage }) => {
+const Header: React.FC<HeaderProps> = ({ onReset, language, setLanguage, sparks }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
 
   return (
-    <header className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50 flex items-center justify-between shadow-sm">
-      {/* Branding - Always on the left */}
+    <header className="bg-white border-b border-slate-200 px-6 py-4 z-50 flex items-center justify-between shadow-sm shrink-0">
+      {/* Branding */}
       <div className="flex items-center gap-2">
         <div className="bg-blue-600 p-2 rounded-lg text-white">
           <Languages size={24} />
@@ -25,8 +27,14 @@ const Header: React.FC<HeaderProps> = ({ onReset, language, setLanguage }) => {
         </div>
       </div>
       
-      {/* Actions - Grouped on the right */}
+      {/* Actions */}
       <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+        {/* Sparks Badge */}
+        <div className="flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100 text-orange-600 shadow-sm transition-all animate-pulse">
+          <Zap size={16} fill="currentColor" />
+          <span className="text-sm font-bold">{sparks}</span>
+        </div>
+
         <div className="relative group">
           <div className="flex items-center gap-1 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors">
             <span className="text-sm font-medium text-slate-700">{language}</span>
