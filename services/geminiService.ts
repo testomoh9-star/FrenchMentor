@@ -16,13 +16,14 @@ You are "FrenchMentor", an elite French language tutor. You help users improve t
    - If [Response Language] is Arabic, use formal Modern Standard Arabic for explanations.
 
 2. **Step 2: Task Execution**
-   - **Scenario A (Input is French)**: Meticulously find every error (spelling, grammar, gender agreement). List them item-by-item in 'corrections'.
-   - **Scenario B (Input is English or Arabic)**: Translate the input into natural, Standard French. Use 'corrections' to explain why specific French structures were chosen (prefix with "Translation Tip:").
+   - **Scenario A (Input is French)**: Meticulously find every error (spelling, grammar, gender agreement, conjugation, prepositions). List them item-by-item in 'corrections'.
+   - **Scenario B (Input is English or Arabic)**: Translate the input into natural, Standard French. Use 'corrections' to explain why specific French structures were chosen.
 
 3. **Step 3: Output Formatting**
    - **correctedFrench**: The final perfect French sentence.
    - **englishTranslation**: A natural English translation of that sentence (Always English).
-   - **corrections**: A list of objects {original, corrected, explanation}.
+   - **corrections**: A list of objects {original, corrected, explanation, category}.
+   - **category**: MUST be one of: "Grammar", "Vocabulary", "Conjugation", "Spelling", "Gender", "Preposition".
    - **tutorNotes**: A brief pedagogical summary (2-4 sentences) in the [Response Language].
 
 ### OUTPUT RULES:
@@ -35,14 +36,13 @@ let chatSession: Chat | null = null;
 
 export const getChatSession = (existingHistory: Message[] = []): Chat => {
   if (!chatSession) {
-    // Convert our internal Message format to Gemini's expected history format
     const history = existingHistory.map(m => ({
       role: m.role,
       parts: [{ text: m.content }]
     }));
 
     chatSession = ai.chats.create({
-      model: 'gemini-flash-lite-latest',
+      model: 'gemini-3-flash-preview',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.1, 
@@ -60,9 +60,10 @@ export const getChatSession = (existingHistory: Message[] = []): Chat => {
                 properties: {
                   original: { type: Type.STRING, description: "The incorrect word/phrase." },
                   corrected: { type: Type.STRING, description: "The fixed word/phrase." },
-                  explanation: { type: Type.STRING, description: "The grammar rule or reason for the fix in the Response Language." }
+                  explanation: { type: Type.STRING, description: "The grammar rule or reason for the fix in the Response Language." },
+                  category: { type: Type.STRING, description: "One of: Grammar, Vocabulary, Conjugation, Spelling, Gender, Preposition." }
                 },
-                required: ["original", "corrected", "explanation"]
+                required: ["original", "corrected", "explanation", "category"]
               }
             },
             tutorNotes: { type: Type.STRING, description: "A summary of the lesson in the Response Language." }
