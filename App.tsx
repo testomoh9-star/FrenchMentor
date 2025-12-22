@@ -7,7 +7,7 @@ import MessageBubble from './components/MessageBubble';
 import InputArea from './components/InputArea';
 import EmptyState from './components/EmptyState';
 import BrainDashboard from './components/BrainDashboard';
-import { Loader2, MessageSquare, Brain } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const STORAGE_KEY_MESSAGES = 'french_mentor_messages';
 const STORAGE_KEY_LANGUAGE = 'french_mentor_language';
@@ -184,6 +184,8 @@ const App: React.FC = () => {
         language={language} 
         setLanguage={setLanguage} 
         sparks={stats.sparks}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
       />
 
       <main 
@@ -191,20 +193,22 @@ const App: React.FC = () => {
         className="flex-1 overflow-y-auto scroll-smooth flex flex-col"
       >
         {activeTab === 'practice' ? (
-          <div className="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
+          <div className="max-w-4xl mx-auto w-full px-4 py-8 flex-1 flex flex-col">
             {messages.length === 0 ? (
-              <EmptyState onSuggestionClick={handleSendMessage} language={language} />
+              <div className="flex-1 flex items-center justify-center">
+                <EmptyState onSuggestionClick={handleSendMessage} language={language} />
+              </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6 pb-4">
                 {messages.map((msg) => (
                   <MessageBubble key={msg.id} message={msg} language={language} />
                 ))}
                 
                 {isLoading && (
                   <div className={`flex justify-center w-full my-8 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
-                    <div className="bg-white px-6 py-4 rounded-full shadow-sm border border-slate-100 flex items-center gap-3">
+                    <div className="bg-white/80 backdrop-blur-sm px-6 py-4 rounded-full shadow-md border border-slate-100 flex items-center gap-3 animate-pulse">
                       <Loader2 className="animate-spin text-blue-600" size={20} />
-                      <span className="text-slate-600 font-medium">{t.analyzing}</span>
+                      <span className="text-slate-600 font-bold tracking-tight">{t.analyzing}</span>
                     </div>
                   </div>
                 )}
@@ -212,40 +216,23 @@ const App: React.FC = () => {
             )}
           </div>
         ) : (
-          <BrainDashboard stats={stats} language={language} />
+          <div className="flex-1 flex flex-col">
+            <BrainDashboard stats={stats} language={language} />
+          </div>
         )}
       </main>
 
-      {/* Footer Container: Combines Input and Nav to prevent overlap */}
-      <footer className="shrink-0 bg-white">
-        {activeTab === 'practice' && (
+      {/* Footer: Only Input Area */}
+      {activeTab === 'practice' && (
+        <footer className="shrink-0">
           <InputArea 
             onSend={handleSendMessage} 
             isLoading={isLoading} 
             language={language} 
             sparks={stats.sparks}
           />
-        )}
-
-        {/* Bottom Navigation */}
-        <nav className="bg-white border-t border-slate-200 px-6 py-3 flex justify-around items-center">
-          <button 
-            onClick={() => setActiveTab('practice')}
-            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeTab === 'practice' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            <MessageSquare size={24} fill={activeTab === 'practice' ? 'currentColor' : 'none'} fillOpacity={0.1} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{t.navPractice}</span>
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('brain')}
-            className={`flex flex-col items-center gap-1 transition-all flex-1 py-1 ${activeTab === 'brain' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            <Brain size={24} fill={activeTab === 'brain' ? 'currentColor' : 'none'} fillOpacity={0.1} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{t.navBrain}</span>
-          </button>
-        </nav>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 };
