@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Zap } from 'lucide-react';
+import { Sparkles, Zap } from 'lucide-react';
 import { SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface InputAreaProps {
@@ -43,7 +43,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, spar
   }, [text]);
 
   return (
-    <div className="p-3 sm:p-4 bg-white border-t border-slate-200 shadow-lg safe-bottom">
+    <div className="bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgb(0,0,0,0.04)] px-3 sm:px-4 pt-3 sm:pt-4 safe-bottom-padding">
       <div className="max-w-2xl mx-auto flex flex-col gap-1.5 sm:gap-2">
         <form 
           onSubmit={handleSubmit} 
@@ -56,7 +56,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, spar
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={hasEnoughSparks ? t.placeholder : "Out of sparks..."}
-            className={`w-full bg-transparent border-0 focus:ring-0 resize-none text-slate-800 placeholder-slate-400 py-2 sm:py-3 px-2 sm:px-3 text-sm sm:text-base max-h-[120px] overflow-y-auto min-h-[40px] ${isRtl ? 'text-right' : 'text-left'}`}
+            className={`w-full bg-transparent border-0 focus:ring-0 resize-none text-slate-800 placeholder-slate-400 py-2 sm:py-3 px-2 sm:px-3 text-sm sm:text-base max-h-[120px] overflow-y-auto min-h-[44px] ${isRtl ? 'text-right' : 'text-left'}`}
             rows={1}
             disabled={isLoading || !hasEnoughSparks}
           />
@@ -82,7 +82,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, spar
           </button>
         </form>
         {!hasEnoughSparks && (
-          <p className="text-center text-[9px] sm:text-[10px] text-orange-500 font-bold uppercase tracking-wider animate-pulse">
+          <p className="text-center text-[9px] sm:text-[10px] text-orange-500 font-bold uppercase tracking-wider animate-pulse pb-1">
             Wait for tomorrow or Upgrade
           </p>
         )}

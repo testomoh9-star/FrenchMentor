@@ -8,18 +8,25 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      :root {
+        /* Use dvh (Dynamic Viewport Height) for accurate mobile heights */
+        --app-height: 100dvh;
+      }
       body {
         font-family: 'Inter', sans-serif;
+        height: var(--app-height);
+        overflow: hidden;
       }
       .font-arabic {
         font-family: 'Noto Sans Arabic', sans-serif;
       }
-      /* Safe area padding for modern mobile browsers */
+      /* Improved Safe area utilities */
       .safe-top {
-        padding-top: env(safe-area-inset-top);
+        padding-top: env(safe-area-inset-top, 0px);
       }
-      .safe-bottom {
-        padding-bottom: env(safe-area-inset-bottom);
+      .safe-bottom-padding {
+        /* On some Androids, inset is 0, so we add a base 16px padding as fallback */
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
       }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
@@ -31,6 +38,9 @@
       ::-webkit-scrollbar-thumb {
         background: #cbd5e1; 
         border-radius: 10px;
+      }
+      #root {
+        height: 100%;
       }
     </style>
 <script type="importmap">
@@ -47,8 +57,8 @@
 }
 </script>
 </head>
-  <body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
-    <div id="root" class="h-full"></div>
+  <body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
