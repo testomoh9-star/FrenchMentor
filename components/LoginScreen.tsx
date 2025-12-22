@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Languages, AlertCircle, Copy, CheckCircle2 } from 'lucide-react';
+import { Languages, AlertCircle, Copy, CheckCircle2, ExternalLink } from 'lucide-react';
 import { SupportLanguage, UI_TRANSLATIONS } from '../types';
 import { signInWithGoogle } from '../services/firebase';
 
@@ -38,7 +38,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ language, onLoginSuccess }) =
 
   return (
     <div className={`min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-10 text-center animate-slide-in">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-8 sm:p-10 text-center animate-slide-in">
         <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center text-white mx-auto mb-8 shadow-lg shadow-blue-200">
           <Languages size={32} />
         </div>
@@ -47,45 +47,65 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ language, onLoginSuccess }) =
           FrenchMentor
         </h1>
         
-        <h2 className="text-xl font-semibold text-slate-700 mb-4">
-          {t.welcome}
-        </h2>
-        
-        <p className="text-slate-500 mb-10 leading-relaxed">
-          {t.loginDesc}
-        </p>
-
         {error?.code === 'auth/unauthorized-domain' ? (
-          <div className="mb-8 p-6 bg-red-50 border border-red-100 rounded-2xl text-left" dir="ltr">
-            <div className="flex items-center gap-2 text-red-600 font-bold mb-2">
-              <AlertCircle size={20} />
-              <span>{t.domainErrorTitle}</span>
+          <div className="text-left" dir="ltr">
+            <div className="flex items-center gap-2 text-red-600 font-bold mb-4">
+              <AlertCircle size={24} />
+              <h2 className="text-lg leading-tight">{t.domainErrorTitle}</h2>
             </div>
-            <p className="text-xs text-red-700 mb-4">
-              {t.domainErrorDesc}
-            </p>
-            <div className="flex items-center gap-2 bg-white border border-red-200 p-2 rounded-lg mb-4">
-              <code className="flex-1 text-xs font-mono text-slate-800 break-all">{currentDomain}</code>
-              <button 
-                onClick={copyDomain}
-                className="p-1.5 hover:bg-slate-100 rounded transition-colors text-slate-400"
-                title="Copy Domain"
+            
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6">
+              <p className="text-sm text-slate-600 mb-4 font-medium">
+                {t.domainErrorDesc}
+              </p>
+              
+              <div className="space-y-3 mb-6">
+                {t.domainErrorSteps.split('\n').map((step, i) => (
+                  <p key={i} className="text-xs text-slate-500 leading-relaxed">
+                    {step}
+                  </p>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 bg-white border-2 border-blue-100 p-3 rounded-xl mb-4 shadow-sm">
+                <code className="flex-1 text-xs font-mono font-bold text-blue-700 truncate">{currentDomain}</code>
+                <button 
+                  onClick={copyDomain}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-600 font-bold text-[10px] uppercase tracking-wider"
+                >
+                  {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+
+              <a 
+                href="https://console.firebase.google.com/project/frenchmentor-8dbec/authentication/settings" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200"
               >
-                {copied ? <CheckCircle2 size={16} className="text-green-500" /> : <Copy size={16} />}
-              </button>
+                Open Firebase Console
+                <ExternalLink size={14} />
+              </a>
             </div>
-            <p className="text-[10px] text-slate-500 leading-tight">
-              {t.domainErrorSteps}
-            </p>
+
             <button 
               onClick={handleLogin}
-              className="mt-6 w-full py-2 px-4 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-colors"
+              className="w-full py-4 text-slate-500 font-bold text-sm hover:text-slate-800 transition-colors underline decoration-slate-200 underline-offset-4"
             >
-              Try Again
+              I added it, try logging in again
             </button>
           </div>
         ) : (
           <>
+            <h2 className="text-xl font-semibold text-slate-700 mb-4">
+              {t.welcome}
+            </h2>
+            
+            <p className="text-slate-500 mb-10 leading-relaxed">
+              {t.loginDesc}
+            </p>
+
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-2">
                 <AlertCircle size={16} />
@@ -103,8 +123,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ language, onLoginSuccess }) =
           </>
         )}
 
-        <p className="mt-8 text-xs text-slate-400">
-          By continuing, you agree to our terms and privacy policy.
+        <p className="mt-8 text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+          Powered by Gemini AI
         </p>
       </div>
     </div>
