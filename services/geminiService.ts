@@ -16,33 +16,33 @@ You are "FrenchMentor", an elite French language tutor. You help users improve t
    - If [Response Language] is Arabic, use formal Modern Standard Arabic for explanations.
 
 2. **Step 2: Task Execution**
-   - **Scenario A (Input is French)**: Meticulously find every error (spelling, grammar, gender agreement). List them item-by-item in 'corrections'.
+   - **Scenario A (Input is French)**: Meticulously find every error (spelling, grammar, gender agreement). List them item-by-item in 'corrections'. 
+   - **Assign a category to each correction** from: "Grammar", "Spelling", "Vocabulary", "Conjugation".
    - **Scenario B (Input is English or Arabic)**: Translate the input into natural, Standard French. Use 'corrections' to explain why specific French structures were chosen (prefix with "Translation Tip:").
 
 3. **Step 3: Output Formatting**
    - **correctedFrench**: The final perfect French sentence.
    - **englishTranslation**: A natural English translation of that sentence (Always English).
-   - **corrections**: A list of objects {original, corrected, explanation}.
+   - **corrections**: A list of objects {original, corrected, explanation, category}.
    - **tutorNotes**: A brief pedagogical summary (2-4 sentences) in the [Response Language].
 
 ### OUTPUT RULES:
 - Output valid JSON only.
 - DO NOT use English for explanations if the [Response Language] is French or Arabic.
-- Be precise and professional.
 `;
 
 let chatSession: Chat | null = null;
 
 export const getChatSession = (existingHistory: Message[] = []): Chat => {
   if (!chatSession) {
-    // Convert our internal Message format to Gemini's expected history format
     const history = existingHistory.map(m => ({
       role: m.role,
       parts: [{ text: m.content }]
     }));
 
+    // Use gemini-3-flash-preview for correction tasks as it's the recommended model for basic text tasks
     chatSession = ai.chats.create({
-      model: 'gemini-flash-lite-latest',
+      model: 'gemini-3-flash-preview',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         temperature: 0.1, 
@@ -50,22 +50,22 @@ export const getChatSession = (existingHistory: Message[] = []): Chat => {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            correctedFrench: { type: Type.STRING, description: "The corrected or translated French sentence." },
-            englishTranslation: { type: Type.STRING, description: "English translation of the French sentence." },
+            correctedFrench: { type: Type.STRING },
+            englishTranslation: { type: Type.STRING },
             corrections: {
               type: Type.ARRAY,
-              description: "List of specific word-level corrections.",
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  original: { type: Type.STRING, description: "The incorrect word/phrase." },
-                  corrected: { type: Type.STRING, description: "The fixed word/phrase." },
-                  explanation: { type: Type.STRING, description: "The grammar rule or reason for the fix in the Response Language." }
+                  original: { type: Type.STRING },
+                  corrected: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
+                  category: { type: Type.STRING, enum: ["Grammar", "Spelling", "Vocabulary", "Conjugation"] }
                 },
-                required: ["original", "corrected", "explanation"]
+                required: ["original", "corrected", "explanation", "category"]
               }
             },
-            tutorNotes: { type: Type.STRING, description: "A summary of the lesson in the Response Language." }
+            tutorNotes: { type: Type.STRING }
           },
           propertyOrdering: ["correctedFrench", "englishTranslation", "corrections", "tutorNotes"]
         }
@@ -80,31 +80,43 @@ export const resetChatSession = () => {
   chatSession = null;
 };
 
-const MAX_RETRIES = 2;
-
 export const sendMessageToGemini = async (message: string, language: SupportLanguage, history: Message[] = []): Promise<string> => {
-  let currentAttempt = 0;
+  const chat = getChatSession(history);
+  const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}`;
+  const result = await chat.sendMessage({ message: promptWithLanguage });
+  // Directly access .text property from GenerateContentResponse
+  return result.text || "{}";
+};
 
-  while (currentAttempt < MAX_RETRIES) {
-    try {
-      const chat = getChatSession(history);
-      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Requirement]: Strictly provide all explanations and notes in ${language}.`;
-      
-      const result = await chat.sendMessage({ message: promptWithLanguage });
-      return result.text || "{}";
-    } catch (error) {
-      currentAttempt++;
-      if (currentAttempt >= MAX_RETRIES) {
-        resetChatSession();
-        throw error;
-      }
-    }
-  }
-  return "{}";
+// --- Personalized Lesson Generator (The Brain) ---
+
+export const generateLessonFromHistory = async (mistakes: any[], language: SupportLanguage): Promise<string> => {
+  // Use gemini-3-flash-preview for lesson generation
+  const model = 'gemini-3-flash-preview';
+  const historyText = mistakes.slice(0, 15).map(m => `- Original: ${m.original}, Corrected: ${m.corrected}, Reason: ${m.explanation}`).join('\n');
+  
+  const prompt = `
+    The user has made the following mistakes in French recently:
+    ${historyText}
+
+    Based ONLY on these specific mistakes, write a short, encouraging French lesson.
+    The lesson MUST be in ${language}.
+    Focus on the common patterns you see.
+    Use Markdown formatting (bold, bullet points).
+    Keep it concise and pedagogical.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: model,
+    contents: prompt,
+    config: { thinkingConfig: { thinkingBudget: 0 } }
+  });
+
+  // Directly access .text property from GenerateContentResponse
+  return response.text || "No lesson generated.";
 };
 
 // --- Audio / TTS Logic ---
-
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -115,16 +127,10 @@ function decode(base64: string) {
   return bytes;
 }
 
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
+async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: number, numChannels: number): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = buffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {
@@ -141,33 +147,22 @@ export const playFrenchTTS = async (text: string): Promise<void> => {
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
-        speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-        },
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
       },
     });
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) throw new Error("No audio data");
 
-    const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-    const outputNode = outputAudioContext.destination;
-
-    const audioBytes = decode(base64Audio);
-    const audioBuffer = await decodeAudioData(audioBytes, outputAudioContext, 24000, 1);
-    
-    const source = outputAudioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(outputNode);
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+    const bytes = decode(base64Audio);
+    const buffer = await decodeAudioData(bytes, ctx, 24000, 1);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
     source.start();
-    
-    return new Promise((resolve) => {
-        source.onended = () => resolve();
-    });
-  } catch (error) {
-    console.error("TTS Error:", error);
-    throw error;
+    return new Promise(r => source.onended = () => r());
+  } catch (e) {
+    console.error(e);
   }
 };
