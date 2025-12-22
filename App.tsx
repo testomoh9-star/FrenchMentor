@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Message, SupportLanguage, UI_TRANSLATIONS } from './types';
 import { sendMessageToGemini, resetChatSession } from './services/geminiService';
@@ -7,10 +8,26 @@ import InputArea from './components/InputArea';
 import EmptyState from './components/EmptyState';
 import { Loader2 } from 'lucide-react';
 
+const STORAGE_KEY_MESSAGES = 'french_mentor_messages';
+const STORAGE_KEY_LANGUAGE = 'french_mentor_language';
+
 const App: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Initialize state from localStorage
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_MESSAGES);
+    try {
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [language, setLanguage] = useState<SupportLanguage>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_LANGUAGE);
+    return (saved as SupportLanguage) || 'English';
+  });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [language, setLanguage] = useState<SupportLanguage>('English');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const t = UI_TRANSLATIONS[language];
@@ -20,9 +37,21 @@ const App: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Persist messages whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(messages));
+    scrollToBottom();
+  }, [messages]);
+
+  // Persist language whenever it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_LANGUAGE, language);
+  }, [language]);
+
+  // Ensure we scroll to bottom when loading starts/ends
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [isLoading]);
 
   const handleSendMessage = useCallback(async (content: string) => {
     const newUserMessage: Message = {
@@ -36,7 +65,8 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const jsonResponse = await sendMessageToGemini(content, language);
+      // Pass the current messages as history to maintain context
+      const jsonResponse = await sendMessageToGemini(content, language, messages);
       
       const newAiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -69,11 +99,12 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [language]);
+  }, [language, messages]);
 
   const handleReset = useCallback(() => {
     if (window.confirm(t.resetConfirm)) {
       setMessages([]);
+      localStorage.removeItem(STORAGE_KEY_MESSAGES);
       resetChatSession();
     }
   }, [t]);

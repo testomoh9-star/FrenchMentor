@@ -1,5 +1,6 @@
+
 import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
-import { SupportLanguage } from "../types";
+import { SupportLanguage, Message } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -32,8 +33,14 @@ You are "FrenchMentor", an elite French language tutor. You help users improve t
 
 let chatSession: Chat | null = null;
 
-export const getChatSession = (): Chat => {
+export const getChatSession = (existingHistory: Message[] = []): Chat => {
   if (!chatSession) {
+    // Convert our internal Message format to Gemini's expected history format
+    const history = existingHistory.map(m => ({
+      role: m.role,
+      parts: [{ text: m.content }]
+    }));
+
     chatSession = ai.chats.create({
       model: 'gemini-flash-lite-latest',
       config: {
@@ -63,6 +70,7 @@ export const getChatSession = (): Chat => {
           propertyOrdering: ["correctedFrench", "englishTranslation", "corrections", "tutorNotes"]
         }
       },
+      history: history
     });
   }
   return chatSession;
@@ -74,12 +82,12 @@ export const resetChatSession = () => {
 
 const MAX_RETRIES = 2;
 
-export const sendMessageToGemini = async (message: string, language: SupportLanguage): Promise<string> => {
+export const sendMessageToGemini = async (message: string, language: SupportLanguage, history: Message[] = []): Promise<string> => {
   let currentAttempt = 0;
 
   while (currentAttempt < MAX_RETRIES) {
     try {
-      const chat = getChatSession();
+      const chat = getChatSession(history);
       const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Requirement]: Strictly provide all explanations and notes in ${language}.`;
       
       const result = await chat.sendMessage({ message: promptWithLanguage });
