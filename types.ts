@@ -1,11 +1,9 @@
-
 export type SupportLanguage = 'English' | 'French' | 'Arabic';
 
 export interface CorrectionItem {
   original: string;
   corrected: string;
   explanation: string;
-  category?: 'Grammar' | 'Spelling' | 'Vocabulary' | 'Conjugation' | 'General';
 }
 
 export interface CorrectionResponse {
@@ -18,37 +16,18 @@ export interface CorrectionResponse {
 export interface Message {
   id: string;
   role: 'user' | 'model';
-  content: string; 
+  content: string; // This will be a JSON string for the model
   timestamp: number;
   isError?: boolean;
 }
 
-export interface UserProfile {
-  uid: string;
-  isPro: boolean;
-  sparks: number;
-  totalCorrections: number;
-  mistakeCategories: Record<string, number>;
+export interface ChatState {
+  messages: Message[];
+  isLoading: boolean;
 }
 
 export const UI_TRANSLATIONS = {
   English: {
-    welcome: "Master French with Ease",
-    loginDesc: "Sign in to save your progress, track your mistakes, and unlock personalized lessons.",
-    loginBtn: "Continue with Google",
-    domainErrorTitle: "Action Needed: Authorize your Address",
-    domainErrorDesc: "Firebase (your database) doesn't recognize this website yet. You need to add this web address to your 'Authorized' list.",
-    domainErrorSteps: "1. Open the link below to your Firebase Settings.\n2. Look for 'Authorized domains'.\n3. Click 'Add domain' and paste the address shown below.",
-    tabPractice: "Practice",
-    tabBrain: "My Brain",
-    proBadge: "PRO",
-    upgradeBtn: "Unlock Teacher's Brain",
-    upgradeDesc: "Get personalized lessons based on your specific mistakes.",
-    statsTotal: "Total Errors Caught",
-    statsAccuracy: "Accuracy Score",
-    statsCommon: "Common Pitfalls",
-    generateLesson: "Generate Review Lesson",
-    lessonLoading: "Analyzing your past mistakes...",
     subtitle: "Bonjour ! Ready to learn?",
     description: "Type a phrase in French to get corrections, or type in English to get a translation.",
     placeholder: "Write a sentence in French (or English)...",
@@ -58,9 +37,8 @@ export const UI_TRANSLATIONS = {
     perfectLabel: "Perfect! No corrections needed.",
     originalLabel: "Original",
     listen: "Listen to pronunciation",
-    resetConfirm: "Start a new session? This will clear your history.",
+    resetConfirm: "Start a new session?",
     analyzing: "Analyzing your French...",
-    logout: "Sign Out",
     suggestions: [
       "Je suis très contente de te voir",
       "How do you say 'I need to book a table' in French?",
@@ -69,22 +47,6 @@ export const UI_TRANSLATIONS = {
     ]
   },
   French: {
-    welcome: "Maîtrisez le français facilement",
-    loginDesc: "Connectez-vous pour enregistrer vos progrès et débloquer des leçons personnalisées.",
-    loginBtn: "Continuer avec Google",
-    domainErrorTitle: "Action requise : Autorisez votre adresse",
-    domainErrorDesc: "Firebase ne reconnaît pas encore ce site. Vous devez ajouter cette adresse web à votre liste 'autorisée'.",
-    domainErrorSteps: "1. Ouvrez le lien vers vos paramètres Firebase ci-dessous.\n2. Cherchez 'Domaines autorisés'.\n3. Cliquez sur 'Ajouter un domaine' et collez l'adresse ci-dessous.",
-    tabPractice: "Pratique",
-    tabBrain: "Mon Cerveau",
-    proBadge: "PRO",
-    upgradeBtn: "Débloquer le Cerveau",
-    upgradeDesc: "Obtenez des leçons basées sur vos propres erreurs.",
-    statsTotal: "Erreurs Corrigées",
-    statsAccuracy: "Score de Précision",
-    statsCommon: "Erreurs Fréquentes",
-    generateLesson: "Générer une leçon de révision",
-    lessonLoading: "Analyse de vos erreurs passées...",
     subtitle: "Bonjour ! Prêt à apprendre ?",
     description: "Tapez une phrase en français pour obtenir des corrections, ou en anglais pour une traduction.",
     placeholder: "Écrivez une phrase en français (ou anglais)...",
@@ -94,9 +56,8 @@ export const UI_TRANSLATIONS = {
     perfectLabel: "Parfait ! Aucune correction nécessaire.",
     originalLabel: "Original",
     listen: "Écouter la prononciation",
-    resetConfirm: "Effacer l'historique ?",
-    analyzing: "Analyse en cours...",
-    logout: "Déconnexion",
+    resetConfirm: "Commencer une nouvelle session ?",
+    analyzing: "Analyse de votre français...",
     suggestions: [
       "Je suis très contente de te voir",
       "Comment dit-on 'I need to book a table' en français ?",
@@ -105,22 +66,6 @@ export const UI_TRANSLATIONS = {
     ]
   },
   Arabic: {
-    welcome: "أتقن الفرنسية بسهولة",
-    loginDesc: "سجل الدخول لحفظ تقدمك وتتبع أخطائك وفتح دروس مخصصة لك.",
-    loginBtn: "المتابعة باستخدام Google",
-    domainErrorTitle: "مطلوب إجراء: اعتماد عنوان موقعك",
-    domainErrorDesc: "قاعدة بيانات Firebase لا تتعرف على هذا الموقع بعد. يجب إضافة عنوان هذا الموقع إلى قائمة 'العناوين المعتمدة'.",
-    domainErrorSteps: "1. افتح الرابط أدناه لإعدادات Firebase.\n2. ابحث عن 'Authorized domains'.\n3. انقر على 'Add domain' والصق العنوان الموضح أدناه.",
-    tabPractice: "ممارسة",
-    tabBrain: "ذكائي الآلي",
-    proBadge: "نسخة برو",
-    upgradeBtn: "فتح ميزات المعلم",
-    upgradeDesc: "احصل على دروس مخصصة بناءً على أخطائك الخاصة.",
-    statsTotal: "إجمالي الأخطاء",
-    statsAccuracy: "مستوى الدقة",
-    statsCommon: "أخطاء شائعة",
-    generateLesson: "إنشاء درس مراجعة",
-    lessonLoading: "جاري تحليل أخطائك السابقة...",
     subtitle: "مرحباً! هل أنت مستعد للتعلم؟",
     description: "اكتب جملة بالفرنسية للحصول على تصحيحات، أو بالإنجليزية للحصول على ترجمة.",
     placeholder: "اكتب جملة بالفرنسية (أو الإنجليزية)...",
@@ -131,8 +76,7 @@ export const UI_TRANSLATIONS = {
     originalLabel: "الأصل",
     listen: "استمع إلى النطق",
     resetConfirm: "هل تريد بدء جلسة جديدة؟",
-    analyzing: "جاري التحليل...",
-    logout: "تسجيل الخروج",
+    analyzing: "جاري تحليل لغتك الفرنسية...",
     suggestions: [
       "Je suis très contente de te voir",
       "كيف أقول 'أحتاج لحجز طاولة' بالفرنسية؟",
