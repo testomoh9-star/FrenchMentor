@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Message, CorrectionResponse, SupportLanguage, UI_TRANSLATIONS } from '../types';
-import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
+import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { playFrenchTTS } from '../services/geminiService';
 
 interface MessageBubbleProps {
@@ -45,6 +45,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
 
   if (!data) return null;
 
+  const isPerfect = !data.corrections || data.corrections.length === 0;
+
   const handlePlayAudio = async () => {
     if (!data || isPlaying) return;
     setIsPlaying(true);
@@ -64,13 +66,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
         {/* Main Result Card */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
           {/* Header */}
-          <div className={`bg-blue-600 p-4 sm:p-6 flex justify-between items-start text-white ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+          <div className={`${isPerfect ? 'bg-green-600' : 'bg-blue-600'} p-4 sm:p-6 flex justify-between items-start text-white transition-colors duration-500 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
             <div dir="ltr" className="text-left flex-1 min-w-0">
-              <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-1">Corrected French</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-90">
+                  {isPerfect ? t.lookingGood : 'Corrected French'}
+                </h3>
+                {isPerfect && <CheckCircle2 size={12} className="text-green-200" />}
+              </div>
               <div className="text-xl sm:text-3xl font-bold leading-tight break-words">
                 {data.correctedFrench}
               </div>
-              <p className="text-blue-100 italic mt-1 sm:mt-2 text-base sm:text-lg">"{data.englishTranslation}"</p>
+              <p className="text-white/80 italic mt-1 sm:mt-2 text-base sm:text-lg">"{data.englishTranslation}"</p>
             </div>
             <button 
               onClick={handlePlayAudio}
@@ -84,16 +91,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
 
           {/* Body */}
           <div className="p-4 sm:p-6">
-            {data.corrections && data.corrections.length > 0 ? (
+            {!isPerfect ? (
               <div>
-                <div className={`flex items-center gap-2 mb-3 text-slate-800 font-semibold text-sm sm:text-base ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex items-center gap-2 mb-3 font-semibold text-sm sm:text-base ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
                   <AlertCircle size={16} className="text-orange-500" />
-                  <span>{t.correctionsLabel}</span>
+                  <span className="text-slate-800">{t.correctionsLabel}</span>
                 </div>
                 
                 <div className="space-y-2.5 sm:space-y-3">
                   {data.corrections.map((item, idx) => (
-                    <div key={idx} className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
+                    <div key={idx} className="bg-slate-50 border-slate-100 p-3 sm:p-4 rounded-xl border">
                       <div className={`flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir="ltr">
                         <span className="text-red-500 font-medium line-through text-xs sm:text-sm bg-red-50 px-1.5 py-0.5 rounded">
                           {item.original}
@@ -113,7 +120,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
             ) : (
               <div className={`bg-green-50 p-3 sm:p-4 rounded-xl border border-green-100 flex items-center gap-2 sm:gap-3 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
                  <div className="bg-green-100 p-1.5 rounded-full text-green-600">
-                   <AlertCircle size={18} />
+                   <CheckCircle2 size={18} />
                  </div>
                  <p className="text-green-800 font-medium text-sm">{t.perfectLabel}</p>
               </div>

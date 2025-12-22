@@ -5,7 +5,7 @@ export interface CorrectionItem {
   original: string;
   corrected: string;
   explanation: string;
-  category: string; // Added for tracking
+  category: string; 
 }
 
 export interface CorrectionResponse {
@@ -32,7 +32,7 @@ export interface BrainStats {
 export interface Message {
   id: string;
   role: 'user' | 'model';
-  content: string; // This will be a JSON string for the model
+  content: string; 
   timestamp: number;
   isError?: boolean;
 }
@@ -51,8 +51,10 @@ export const UI_TRANSLATIONS = {
     placeholder: "Write a sentence in French (or English)...",
     button: "Improve",
     correctionsLabel: "Corrections Needed",
+    refinementsLabel: "Small Refinements",
     notesLabel: "Tutor's Notes",
     perfectLabel: "Perfect! No corrections needed.",
+    lookingGood: "Looking Good!",
     originalLabel: "Original",
     listen: "Listen to pronunciation",
     resetConfirm: "Start a new session?",
@@ -77,8 +79,10 @@ export const UI_TRANSLATIONS = {
     placeholder: "Écrivez une phrase en français (ou anglais)...",
     button: "Améliorer",
     correctionsLabel: "Corrections Nécessaires",
+    refinementsLabel: "Petits Ajustements",
     notesLabel: "Notes du Tuteur",
     perfectLabel: "Parfait ! Aucune correction nécessaire.",
+    lookingGood: "Très bien !",
     originalLabel: "Original",
     listen: "Écouter la prononciation",
     resetConfirm: "Commencer une nouvelle session ?",
@@ -103,8 +107,10 @@ export const UI_TRANSLATIONS = {
     placeholder: "اكتب جملة بالفرنسية (أو الإنجليزية)...",
     button: "تحسين",
     correctionsLabel: "التصحيحات المطلوبة",
+    refinementsLabel: "تعديلات بسيطة",
     notesLabel: "ملاحظات المعلم",
     perfectLabel: "ممتاز! لا توجد تصحيحات مطلوبة.",
+    lookingGood: "تبدو جيدة!",
     originalLabel: "الأصل",
     listen: "استمع إلى النطق",
     resetConfirm: "هل تريد بدء جلسة جديدة؟",

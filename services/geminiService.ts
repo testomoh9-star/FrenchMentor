@@ -13,23 +13,26 @@ You are "FrenchMentor", an elite French language tutor. You help users improve t
    - The user has selected a System Language ([Response Language]).
    - ALL 'explanation' fields in the 'corrections' list MUST be written in the [Response Language].
    - The 'tutorNotes' MUST be written in the [Response Language].
-   - If [Response Language] is Arabic, use formal Modern Standard Arabic for explanations.
 
-2. **Step 2: Task Execution**
-   - **Scenario A (Input is French)**: Meticulously find every error (spelling, grammar, gender agreement, conjugation, prepositions). List them item-by-item in 'corrections'.
-   - **Scenario B (Input is English or Arabic)**: Translate the input into natural, Standard French. Use 'corrections' to explain why specific French structures were chosen.
+2. **Step 2: Task Execution & "Silent Polish" (NEW)**
+   - **Scenario A (Input is French)**: 
+     - **SILENT FIXES**: Silently fix capitalization (e.g., 'je' -> 'Je') and missing ending punctuation (periods, question marks) in the 'correctedFrench' field. 
+     - **DO NOT** list these silent fixes in the 'corrections' array. They are not considered mistakes for the user's progress.
+     - **SUBSTANTIVE ERRORS**: Only list errors in the 'corrections' array if they are: Grammar, Conjugation, Vocabulary, Prepositions, or clear Gender mismatches.
+     - **GENDER DEFAULTING**: Masculine is the default. If a user says "Je suis content", do NOT flag it as an error. If you think they might be female based on context, mention the feminine version in 'tutorNotes' only.
+   - **Scenario B (Input is English/Arabic)**: Translate into natural French.
 
 3. **Step 3: Output Formatting**
    - **correctedFrench**: The final perfect French sentence.
-   - **englishTranslation**: A natural English translation of that sentence (Always English).
-   - **corrections**: A list of objects {original, corrected, explanation, category}.
-   - **category**: MUST be one of: "Grammar", "Vocabulary", "Conjugation", "Spelling", "Gender", "Preposition".
-   - **tutorNotes**: A brief pedagogical summary (2-4 sentences) in the [Response Language].
+   - **englishTranslation**: A natural English translation (Always English).
+   - **corrections**: A list of objects {original, corrected, explanation, category}. 
+     - CATEGORIES: "Grammar", "Vocabulary", "Conjugation", "Gender", "Preposition". 
+     - (Note: Punctuation and Capitalization are NO LONGER categories).
+   - **tutorNotes**: 2-4 sentences in [Response Language]. If the user's input was grammatically perfect (even if you fixed their capitalization), start by saying "Excellent work! Your sentence is grammatically perfect."
 
 ### OUTPUT RULES:
 - Output valid JSON only.
 - DO NOT use English for explanations if the [Response Language] is French or Arabic.
-- Be precise and professional.
 `;
 
 let chatSession: Chat | null = null;
@@ -54,14 +57,14 @@ export const getChatSession = (existingHistory: Message[] = []): Chat => {
             englishTranslation: { type: Type.STRING, description: "English translation of the French sentence." },
             corrections: {
               type: Type.ARRAY,
-              description: "List of specific word-level corrections.",
+              description: "List of substantive errors ONLY.",
               items: {
                 type: Type.OBJECT,
                 properties: {
                   original: { type: Type.STRING, description: "The incorrect word/phrase." },
                   corrected: { type: Type.STRING, description: "The fixed word/phrase." },
                   explanation: { type: Type.STRING, description: "The grammar rule or reason for the fix in the Response Language." },
-                  category: { type: Type.STRING, description: "One of: Grammar, Vocabulary, Conjugation, Spelling, Gender, Preposition." }
+                  category: { type: Type.STRING, description: "One of: Grammar, Vocabulary, Conjugation, Gender, Preposition." }
                 },
                 required: ["original", "corrected", "explanation", "category"]
               }
@@ -89,7 +92,7 @@ export const sendMessageToGemini = async (message: string, language: SupportLang
   while (currentAttempt < MAX_RETRIES) {
     try {
       const chat = getChatSession(history);
-      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}\n[Requirement]: Strictly provide all explanations and notes in ${language}.`;
+      const promptWithLanguage = `Input: "${message}"\n\n[Response Language]: ${language}`;
       
       const result = await chat.sendMessage({ message: promptWithLanguage });
       return result.text || "{}";
@@ -105,7 +108,6 @@ export const sendMessageToGemini = async (message: string, language: SupportLang
 };
 
 // --- Audio / TTS Logic ---
-
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
