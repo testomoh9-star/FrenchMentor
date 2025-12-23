@@ -7,15 +7,21 @@ import MessageBubble from './components/MessageBubble';
 import InputArea from './components/InputArea';
 import EmptyState from './components/EmptyState';
 import BrainDashboard from './components/BrainDashboard';
+import ProModal from './components/ProModal';
 import { Loader2 } from 'lucide-react';
 
 const STORAGE_KEY_MESSAGES = 'french_mentor_messages';
 const STORAGE_KEY_LANGUAGE = 'french_mentor_language';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
+const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 
 const App: React.FC = () => {
-  // Navigation State
+  // Navigation & UI State
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
+  const [showProModal, setShowProModal] = useState(false);
+  const [isPro, setIsPro] = useState<boolean>(() => {
+    return localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true';
+  });
 
   // Initialize state from localStorage
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -61,21 +67,23 @@ const App: React.FC = () => {
     }
   };
 
-  // Persist messages
+  // Persist state
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(messages));
     scrollToBottom();
   }, [messages, activeTab]);
 
-  // Persist stats
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
   }, [stats]);
 
-  // Persist language
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_LANGUAGE, language);
   }, [language]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_IS_PRO, String(isPro));
+  }, [isPro]);
 
   const updateStatsFromResponse = (responseJson: string) => {
     try {
@@ -109,8 +117,11 @@ const App: React.FC = () => {
   };
 
   const handleSendMessage = useCallback(async (content: string) => {
-    // Check sparks
-    if (stats.sparks < 2) return;
+    // Only deduct if NOT Pro
+    if (!isPro && stats.sparks < 2) {
+      setShowProModal(true);
+      return;
+    }
 
     const newUserMessage: Message = {
       id: Date.now().toString(),
@@ -122,8 +133,10 @@ const App: React.FC = () => {
     setMessages((prev) => [...prev, newUserMessage]);
     setIsLoading(true);
 
-    // Deduct sparks immediately for feedback
-    setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - 2) }));
+    // Deduct sparks only for free users
+    if (!isPro) {
+      setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - 2) }));
+    }
 
     try {
       const jsonResponse = await sendMessageToGemini(content, language, messages);
@@ -140,19 +153,17 @@ const App: React.FC = () => {
       
     } catch (error) {
       console.error("Failed to send message", error);
-      const errorJson = JSON.stringify({
-         correctedFrench: "Error",
-         englishTranslation: "Could not process request",
-         corrections: [],
-         tutorNotes: "Désolé, j'ai rencontré une erreur. Veuillez réessayer."
-      });
-
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'model',
-          content: errorJson,
+          content: JSON.stringify({
+            correctedFrench: "Désolé",
+            englishTranslation: "I encountered an error.",
+            corrections: [],
+            tutorNotes: "Il semble y avoir un problème technique. Veuillez réessayer."
+          }),
           timestamp: Date.now(),
           isError: true,
         },
@@ -160,22 +171,28 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [language, messages, stats.sparks]);
+  }, [language, messages, stats.sparks, isPro]);
 
   const handleReset = useCallback(() => {
     if (window.confirm(t.resetConfirm)) {
       setMessages([]);
-      setStats({
+      setStats(prev => ({
+        ...prev,
         totalCorrections: 0,
         categories: {},
         history: [],
-        sparks: 10
-      });
-      localStorage.removeItem(STORAGE_KEY_MESSAGES);
-      localStorage.removeItem(STORAGE_KEY_STATS);
+        sparks: isPro ? Infinity : 10
+      }));
       resetChatSession();
     }
-  }, [t]);
+  }, [t, isPro]);
+
+  // Demo: Toggle Pro from Header or Refill
+  const handleUpgrade = () => {
+    setIsPro(true);
+    setStats(prev => ({ ...prev, sparks: 999 })); // Visual infinity for sparks
+    setShowProModal(false);
+  };
 
   return (
     <div className={`flex flex-col h-full bg-slate-50 relative font-sans ${isRtl ? 'font-arabic' : ''}`}>
@@ -183,9 +200,10 @@ const App: React.FC = () => {
         onReset={handleReset} 
         language={language} 
         setLanguage={setLanguage} 
-        sparks={stats.sparks}
+        sparks={isPro ? 999 : stats.sparks}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        isPro={isPro}
       />
 
       <main 
@@ -201,7 +219,13 @@ const App: React.FC = () => {
             ) : (
               <div className="space-y-4 sm:space-y-6 pb-2">
                 {messages.map((msg) => (
-                  <MessageBubble key={msg.id} message={msg} language={language} />
+                  <MessageBubble 
+                    key={msg.id} 
+                    message={msg} 
+                    language={language} 
+                    isPro={isPro} 
+                    onLockClick={() => setShowProModal(true)}
+                  />
                 ))}
                 
                 {isLoading && (
@@ -217,21 +241,28 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            <BrainDashboard stats={stats} language={language} />
+            <BrainDashboard stats={stats} language={language} isPro={isPro} onUpgradeClick={() => setShowProModal(true)} />
           </div>
         )}
       </main>
 
-      {/* Footer: Only Input Area */}
       {activeTab === 'practice' && (
         <footer className="shrink-0">
           <InputArea 
             onSend={handleSendMessage} 
             isLoading={isLoading} 
             language={language} 
-            sparks={stats.sparks}
+            sparks={isPro ? 999 : stats.sparks}
           />
         </footer>
+      )}
+
+      {showProModal && (
+        <ProModal 
+          language={language} 
+          onClose={() => setShowProModal(false)} 
+          onUpgrade={handleUpgrade}
+        />
       )}
     </div>
   );

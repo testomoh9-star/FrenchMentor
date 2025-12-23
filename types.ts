@@ -37,11 +37,6 @@ export interface Message {
   isError?: boolean;
 }
 
-export interface ChatState {
-  messages: Message[];
-  isLoading: boolean;
-}
-
 export const UI_TRANSLATIONS = {
   English: {
     navPractice: "Practice",
@@ -51,7 +46,6 @@ export const UI_TRANSLATIONS = {
     placeholder: "Write a sentence in French (or English)...",
     button: "Improve",
     correctionsLabel: "Corrections Needed",
-    refinementsLabel: "Small Refinements",
     notesLabel: "Tutor's Notes",
     perfectLabel: "Perfect! No corrections needed.",
     lookingGood: "Looking Good!",
@@ -64,6 +58,14 @@ export const UI_TRANSLATIONS = {
     statsTotal: "Total Mistakes",
     statsCommon: "Common Pitfalls",
     statsNoData: "Start practicing to see your brain analytics!",
+    proLabel: "PRO",
+    upgradeTitle: "Unlock Your Potential",
+    upgradeDesc: "Get the full FrenchMentor experience and accelerate your learning.",
+    upgradeFullBrain: "Full Brain Analytics",
+    upgradeUnlimitedSparks: "Unlimited Sparks",
+    upgradeAudio: "Pro Audio Pronunciation",
+    upgradeButton: "Upgrade to Pro",
+    getPro: "Get Pro",
     suggestions: [
       "Je suis très contente de te voir",
       "How do you say 'I need to book a table' in French?",
@@ -79,7 +81,6 @@ export const UI_TRANSLATIONS = {
     placeholder: "Écrivez une phrase en français (ou anglais)...",
     button: "Améliorer",
     correctionsLabel: "Corrections Nécessaires",
-    refinementsLabel: "Petits Ajustements",
     notesLabel: "Notes du Tuteur",
     perfectLabel: "Parfait ! Aucune correction nécessaire.",
     lookingGood: "Très bien !",
@@ -92,6 +93,14 @@ export const UI_TRANSLATIONS = {
     statsTotal: "Total des Erreurs",
     statsCommon: "Erreurs Fréquentes",
     statsNoData: "Commencez à pratiquer pour voir vos analyses !",
+    proLabel: "PRO",
+    upgradeTitle: "Libérez votre potentiel",
+    upgradeDesc: "Obtenez l'expérience FrenchMentor complète et accélérez votre apprentissage.",
+    upgradeFullBrain: "Analyses complètes",
+    upgradeUnlimitedSparks: "Étincelles illimitées",
+    upgradeAudio: "Prononciation Pro",
+    upgradeButton: "Passer à Pro",
+    getPro: "Devenir Pro",
     suggestions: [
       "Je suis très contente de te voir",
       "Comment dit-on 'I need to book a table' en français ?",
@@ -107,7 +116,6 @@ export const UI_TRANSLATIONS = {
     placeholder: "اكتب جملة بالفرنسية (أو الإنجليزية)...",
     button: "تحسين",
     correctionsLabel: "التصحيحات المطلوبة",
-    refinementsLabel: "تعديلات بسيطة",
     notesLabel: "ملاحظات المعلم",
     perfectLabel: "ممتاز! لا توجد تصحيحات مطلوبة.",
     lookingGood: "تبدو جيدة!",
@@ -120,6 +128,14 @@ export const UI_TRANSLATIONS = {
     statsTotal: "إجمالي الأخطاء",
     statsCommon: "الأخطاء الشائعة",
     statsNoData: "ابدأ التمرين لرؤية تحليلات دماغك!",
+    proLabel: "برو",
+    upgradeTitle: "أطلق العنان لقدراتك",
+    upgradeDesc: "احصل على تجربة FrenchMentor الكاملة وسرع تعلمك.",
+    upgradeFullBrain: "تحليلات الدماغ الكاملة",
+    upgradeUnlimitedSparks: "شرارات غير محدودة",
+    upgradeAudio: "نطق صوتي احترافي",
+    upgradeButton: "الترقية إلى برو",
+    getPro: "احصل على برو",
     suggestions: [
       "Je suis très contente de te voir",
       "كيف أقول 'أحتاج لحجز طاولة' بالفرنسية؟",

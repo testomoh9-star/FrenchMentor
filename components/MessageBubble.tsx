@@ -1,15 +1,17 @@
 
 import React, { useState } from 'react';
 import { Message, CorrectionResponse, SupportLanguage, UI_TRANSLATIONS } from '../types';
-import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
+import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2, CheckCircle2, Lock, Crown } from 'lucide-react';
 import { playFrenchTTS } from '../services/geminiService';
 
 interface MessageBubbleProps {
   message: Message;
   language: SupportLanguage;
+  isPro?: boolean;
+  onLockClick?: () => void;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro, onLockClick }) => {
   const isUser = message.role === 'user';
   const [isPlaying, setIsPlaying] = useState(false);
   const t = UI_TRANSLATIONS[language];
@@ -48,6 +50,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
   const isPerfect = !data.corrections || data.corrections.length === 0;
 
   const handlePlayAudio = async () => {
+    if (!isPro) {
+      onLockClick?.();
+      return;
+    }
     if (!data || isPlaying) return;
     setIsPlaying(true);
     try {
@@ -82,10 +88,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
             <button 
               onClick={handlePlayAudio}
               disabled={isPlaying}
-              className={`p-2 rounded-full transition-colors text-white shrink-0 ml-2 ${isPlaying ? 'bg-white/40 cursor-wait' : 'bg-white/20 hover:bg-white/30'}`}
+              className={`p-2 rounded-full transition-all text-white shrink-0 ml-2 relative group ${isPlaying ? 'bg-white/40 cursor-wait' : 'bg-white/20 hover:bg-white/30'}`}
               title={t.listen}
             >
               {isPlaying ? <Loader2 size={18} className="animate-spin" /> : <Volume2 size={18} />}
+              {!isPro && (
+                <div className="absolute -top-1 -right-1 bg-indigo-500 rounded-full p-0.5 border border-white">
+                  <Lock size={8} fill="currentColor" />
+                </div>
+              )}
             </button>
           </div>
 
@@ -129,7 +140,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
         </div>
 
         {/* Tutor Notes Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 relative overflow-hidden">
           <div className={`flex items-center gap-2 mb-2 sm:mb-3 text-blue-700 font-semibold text-sm sm:text-base ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
             <BookOpen size={16} />
             <span>{t.notesLabel}</span>
@@ -137,6 +148,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language }) => {
           <p className={`text-xs sm:text-sm text-slate-700 leading-relaxed ${isRtl ? 'text-right' : 'text-left'}`}>
             {data.tutorNotes}
           </p>
+          {isPro && (
+            <div className="absolute top-2 right-2 opacity-10">
+              <Crown size={40} className="text-indigo-600" />
+            </div>
+          )}
         </div>
 
       </div>
