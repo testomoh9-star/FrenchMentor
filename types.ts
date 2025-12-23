@@ -27,6 +27,8 @@ export interface BrainStats {
   categories: Record<string, number>;
   history: MistakeRecord[];
   sparks: number;
+  lastPracticeDate?: string; // ISO date string
+  streak: number;
 }
 
 export interface Message {
@@ -36,6 +38,40 @@ export interface Message {
   timestamp: number;
   isError?: boolean;
 }
+
+export interface Scenario {
+  id: string;
+  icon: string;
+  label: Record<SupportLanguage, string>;
+  prompt: string;
+}
+
+export const SCENARIOS: Scenario[] = [
+  {
+    id: 'cafe',
+    icon: '☕',
+    label: { English: "At the Café", French: "Au Café", Arabic: "في المقهى" },
+    prompt: "I am a waiter at a busy Parisian café. You just sat down. I approach you and say: 'Bonjour ! Vous désirez commander quelque chose ?'"
+  },
+  {
+    id: 'hotel',
+    icon: '🏨',
+    label: { English: "Hotel Check-in", French: "Arrivée à l'Hôtel", Arabic: "تسجيل الوصول في الفندق" },
+    prompt: "I am the receptionist at 'Hôtel de la Paix'. You have a reservation. I say: 'Bienvenue ! Avez-vous une réservation pour ce soir ?'"
+  },
+  {
+    id: 'market',
+    icon: '🥖',
+    label: { English: "The Boulangerie", French: "La Boulangerie", Arabic: "المخبز" },
+    prompt: "You are at a local bakery. I am the baker. It's your turn in line. I say: 'Bonjour ! Ce sera tout pour vous ?'"
+  },
+  {
+    id: 'interview',
+    icon: '💼',
+    label: { English: "Job Interview", French: "Entretien d'embauche", Arabic: "مقابلة عمل" },
+    prompt: "We are in a job interview for a marketing position. I am the manager. I say: 'Bonjour, merci d'être venu. Pouvez-vous vous présenter en quelques mots ?'"
+  }
+];
 
 export const UI_TRANSLATIONS = {
   English: {
@@ -66,6 +102,12 @@ export const UI_TRANSLATIONS = {
     upgradeAudio: "Pro Audio Pronunciation",
     upgradeButton: "Upgrade to Pro",
     getPro: "Get Pro",
+    reviewTitle: "Knowledge Check",
+    reviewSubtitle: "Master the words you missed before.",
+    startReview: "Start Review Session",
+    missionTitle: "Daily Missions",
+    streakLabel: "day streak",
+    apiKeyMissing: "API Key is missing. Please check your environment variables.",
     suggestions: [
       "Je suis très contente de te voir",
       "How do you say 'I need to book a table' in French?",
@@ -101,6 +143,12 @@ export const UI_TRANSLATIONS = {
     upgradeAudio: "Prononciation Pro",
     upgradeButton: "Passer à Pro",
     getPro: "Devenir Pro",
+    reviewTitle: "Vérification des connaissances",
+    reviewSubtitle: "Maîtrisez les mots que vous avez manqués.",
+    startReview: "Commencer la révision",
+    missionTitle: "Missions Quotidiennes",
+    streakLabel: "jours de suite",
+    apiKeyMissing: "Clé API manquante. Veuillez vérifier vos variables d'environnement.",
     suggestions: [
       "Je suis très contente de te voir",
       "Comment dit-on 'I need to book a table' en français ?",
@@ -136,6 +184,12 @@ export const UI_TRANSLATIONS = {
     upgradeAudio: "نطق صوتي احترافي",
     upgradeButton: "الترقية إلى برو",
     getPro: "احصل على برو",
+    reviewTitle: "مراجعة المعرفة",
+    reviewSubtitle: "أتقن الكلمات التي أخطأت فيها من قبل.",
+    startReview: "ابدأ جلسة المراجعة",
+    missionTitle: "المهمات اليومية",
+    streakLabel: "أيام متتالية",
+    apiKeyMissing: "مفتاح API مفقود. يرجى التحقق من متغيرات البيئة.",
     suggestions: [
       "Je suis très contente de te voir",
       "كيف أقول 'أحتاج لحجز طاولة' بالفرنسية؟",

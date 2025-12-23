@@ -4,55 +4,61 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>French Tutor AI</title>
+    <title>FrenchMentor AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
-        /* Use dvh (Dynamic Viewport Height) for accurate mobile heights */
         --app-height: 100dvh;
       }
       body {
         font-family: 'Inter', sans-serif;
         height: var(--app-height);
         overflow: hidden;
+        background-color: #f8fafc;
       }
       .font-arabic {
         font-family: 'Noto Sans Arabic', sans-serif;
       }
-      /* Improved Safe area utilities */
       .safe-top {
         padding-top: env(safe-area-inset-top, 0px);
       }
       .safe-bottom-padding {
-        /* On some Androids, inset is 0, so we add a base 16px padding as fallback */
         padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
       }
-      /* Custom scrollbar */
+      #root {
+        height: 100%;
+      }
+      /* Standard scrollbar for consistent UI */
       ::-webkit-scrollbar {
-        width: 6px;
+        width: 5px;
       }
       ::-webkit-scrollbar-track {
         background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
+        background: #e2e8f0; 
         border-radius: 10px;
       }
-      #root {
-        height: 100%;
+      /* Transitions */
+      .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+      }
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
     </style>
-<script type="importmap">
+  <script type="importmap">
 {
   "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
-    "vite": "https://esm.sh/vite@^7.2.7",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.0"
   }
 }
 </script>
