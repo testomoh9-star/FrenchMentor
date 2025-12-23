@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, SCENARIOS } from './types';
+import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse } from './types';
 import { sendMessageToGemini, resetChatSession } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -8,7 +8,6 @@ import InputArea from './components/InputArea';
 import EmptyState from './components/EmptyState';
 import BrainDashboard from './components/BrainDashboard';
 import ProModal from './components/ProModal';
-import ReviewSession from './components/ReviewSession';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 const STORAGE_KEY_MESSAGES = 'french_mentor_messages';
@@ -19,7 +18,6 @@ const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
   const [showProModal, setShowProModal] = useState(false);
-  const [showReview, setShowReview] = useState(false);
   const [isPro, setIsPro] = useState<boolean>(() => localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true');
   const [configError, setConfigError] = useState<string | null>(null);
 
@@ -39,11 +37,10 @@ const App: React.FC = () => {
         totalCorrections: 0,
         categories: {},
         history: [],
-        sparks: 10,
-        streak: 0
+        sparks: 10
       }; 
     } catch (e) { 
-      return { totalCorrections: 0, categories: {}, history: [], sparks: 10, streak: 0 }; 
+      return { totalCorrections: 0, categories: {}, history: [], sparks: 10 }; 
     }
   });
 
@@ -64,30 +61,6 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEY_LANGUAGE, language); }, [language]);
   useEffect(() => { localStorage.setItem(STORAGE_KEY_IS_PRO, String(isPro)); }, [isPro]);
 
-  // --- STREAK LOGIC ---
-  const updateStreak = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
-    if (stats.lastPracticeDate === today) return;
-
-    setStats(prev => {
-      let newStreak = prev.streak;
-      const lastDate = prev.lastPracticeDate ? new Date(prev.lastPracticeDate) : null;
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-      if (!lastDate) {
-        newStreak = 1;
-      } else if (prev.lastPracticeDate === yesterdayStr) {
-        newStreak += 1;
-      } else {
-        newStreak = 1; // Reset if they missed a day
-      }
-
-      return { ...prev, streak: newStreak, lastPracticeDate: today };
-    });
-  }, [stats.lastPracticeDate]);
-
   const handleSendMessage = useCallback(async (content: string) => {
     if (!isPro && stats.sparks < 2) {
       setShowProModal(true);
@@ -97,7 +70,6 @@ const App: React.FC = () => {
     const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
     setMessages(prev => [...prev, newUserMessage]);
     setIsLoading(true);
-    updateStreak();
 
     if (!isPro) setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - 2) }));
 
@@ -125,12 +97,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [language, messages, stats.sparks, isPro, t, updateStreak]);
-
-  const handleScenarioSelect = (scenarioId: string) => {
-    const scenario = SCENARIOS.find(s => s.id === scenarioId);
-    if (scenario) handleSendMessage(scenario.prompt);
-  };
+  }, [language, messages, stats.sparks, isPro, t]);
 
   const handleReset = useCallback(() => {
     if (window.confirm(t.resetConfirm)) {
@@ -163,7 +130,6 @@ const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isPro={isPro}
-        streak={stats.streak}
       />
 
       <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth flex flex-col">
@@ -174,7 +140,6 @@ const App: React.FC = () => {
                 <EmptyState 
                   onSuggestionClick={handleSendMessage} 
                   language={language} 
-                  onScenarioClick={handleScenarioSelect}
                 />
               </div>
             ) : (
@@ -200,7 +165,7 @@ const App: React.FC = () => {
             )}
           </div>
         ) : (
-          <BrainDashboard stats={stats} language={language} isPro={isPro} onUpgradeClick={() => setShowProModal(true)} onReviewClick={() => setShowReview(true)} />
+          <BrainDashboard stats={stats} language={language} isPro={isPro} onUpgradeClick={() => setShowProModal(true)} />
         )}
       </main>
 
@@ -211,7 +176,6 @@ const App: React.FC = () => {
       )}
 
       {showProModal && <ProModal language={language} onClose={() => setShowProModal(false)} onUpgrade={() => { setIsPro(true); setShowProModal(false); }} />}
-      {showReview && <ReviewSession language={language} history={stats.history} onClose={() => setShowReview(false)} />}
     </div>
   );
 };

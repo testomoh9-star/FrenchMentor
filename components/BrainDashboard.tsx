@@ -1,23 +1,21 @@
 
 import React from 'react';
 import { BrainStats, SupportLanguage, UI_TRANSLATIONS } from '../types';
-import { Brain, Trophy, BarChart3, Clock, Lock, Crown, ArrowRight, PlayCircle } from 'lucide-react';
+import { Brain, Trophy, BarChart3, Clock, Lock, Crown, ArrowRight } from 'lucide-react';
 
 interface BrainDashboardProps {
   stats: BrainStats;
   language: SupportLanguage;
   isPro?: boolean;
   onUpgradeClick?: () => void;
-  onReviewClick: () => void;
 }
 
-const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro, onUpgradeClick, onReviewClick }) => {
+const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro, onUpgradeClick }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
 
   const totalCorrectionsNum = Number(stats.totalCorrections || 0);
   const accuracy = Math.max(40, 100 - (totalCorrectionsNum * 2));
-  const hasHistory = stats.history && stats.history.length > 0;
 
   if (totalCorrectionsNum === 0) {
     return (
@@ -31,7 +29,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
 
   return (
     <div className={`p-6 max-w-4xl mx-auto space-y-8 animate-slide-in pb-24 ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
-      {/* Accuracy & Review Hook */}
+      {/* Accuracy Card */}
       <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-blue-50/50 flex flex-col sm:flex-row items-center gap-8">
         <div className="text-center sm:text-left flex-1">
           <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
@@ -39,15 +37,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
             <h2 className="text-slate-500 font-bold uppercase tracking-widest text-xs">{t.statsAccuracy}</h2>
           </div>
           <p className="text-7xl font-black text-slate-900">{accuracy}%</p>
-          
-          {hasHistory && (
-            <button 
-              onClick={onReviewClick}
-              className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
-            >
-              <PlayCircle size={18} /> {t.startReview}
-            </button>
-          )}
+          <p className="text-slate-400 mt-2 text-sm font-medium">Based on {totalCorrectionsNum} points analyzed.</p>
         </div>
         
         {!isPro && (

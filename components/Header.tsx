@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Languages, RefreshCw, ChevronDown, Zap, MessageSquare, Brain, Crown, Flame } from 'lucide-react';
+import { Languages, RefreshCw, ChevronDown, Zap, MessageSquare, Brain, Crown } from 'lucide-react';
 import { SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface HeaderProps {
@@ -11,7 +11,6 @@ interface HeaderProps {
   activeTab: 'practice' | 'brain';
   setActiveTab: (tab: 'practice' | 'brain') => void;
   isPro?: boolean;
-  streak: number;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -21,8 +20,7 @@ const Header: React.FC<HeaderProps> = ({
   sparks, 
   activeTab, 
   setActiveTab,
-  isPro,
-  streak
+  isPro
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
@@ -61,15 +59,6 @@ const Header: React.FC<HeaderProps> = ({
       </nav>
 
       <div className={`flex items-center gap-1.5 sm:gap-3 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
-        {/* Streak Counter */}
-        {streak > 0 && (
-          <div className="flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-full bg-orange-50 border border-orange-100 text-orange-600 shadow-sm">
-            <Flame size={12} fill="currentColor" className="animate-pulse" />
-            <span className="text-[11px] sm:text-sm font-black">{streak}</span>
-          </div>
-        )}
-
-        {/* Sparks */}
         <div className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-full border shadow-sm ${isPro ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
           <Zap size={12} fill="currentColor" />
           <span className="text-[11px] sm:text-sm font-black">{isPro ? '∞' : sparks}</span>

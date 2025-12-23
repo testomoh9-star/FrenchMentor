@@ -1,15 +1,14 @@
 
 import React from 'react';
-import { MessageSquarePlus, MapPin } from 'lucide-react';
-import { SupportLanguage, UI_TRANSLATIONS, SCENARIOS } from '../types';
+import { MessageSquarePlus } from 'lucide-react';
+import { SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface EmptyStateProps {
   onSuggestionClick: (text: string) => void;
-  onScenarioClick: (id: string) => void;
   language: SupportLanguage;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ onSuggestionClick, onScenarioClick, language }) => {
+const EmptyState: React.FC<EmptyStateProps> = ({ onSuggestionClick, language }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
 
@@ -22,25 +21,6 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onSuggestionClick, onScenarioCl
       <p className="text-slate-500 max-w-md mb-8 sm:mb-10 text-base sm:text-lg">
         {t.description}
       </p>
-
-      {/* Scenarios / Missions */}
-      <div className="w-full max-w-3xl mb-12">
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center justify-center gap-2">
-           <MapPin size={14} /> {t.missionTitle}
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {SCENARIOS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => onScenarioClick(s.id)}
-              className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 hover:shadow-indigo-50 hover:shadow-lg transition-all flex flex-col items-center gap-2 group"
-            >
-              <span className="text-2xl group-hover:scale-125 transition-transform">{s.icon}</span>
-              <span className="text-[10px] sm:text-[11px] font-black text-slate-700">{s.label[language]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
         {t.suggestions.map((suggestion, idx) => (
