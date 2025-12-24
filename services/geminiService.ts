@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
-import { SupportLanguage, Message } from "../types";
+import { SupportLanguage, Message, MistakeRecord } from "../types";
 
 let aiInstance: GoogleGenAI | null = null;
 
@@ -101,6 +101,66 @@ export const sendMessageToGemini = async (message: string, language: SupportLang
     resetChatSession();
     throw error;
   }
+};
+
+export const generateCoachLesson = async (category: string, history: MistakeRecord[], language: SupportLanguage): Promise<string> => {
+  const ai = getAI();
+  // Filter for the EXACT category and take the most recent 3 to prevent mixing topics
+  const filteredMistakes = history
+    .filter(m => m.category === category)
+    .slice(-3)
+    .map(m => `"${m.original}" corrected to "${m.corrected}"`)
+    .join(", ");
+  
+  const prompt = `
+    You are an elite French coach. The user has a repetitive pattern of errors in the category: "${category}".
+    Mistakes to analyze: ${filteredMistakes}.
+    
+    Generate a laser-focused report in ${language}. 
+    CRITICAL: The report must solve THIS specific pattern, not a general summary.
+
+    1. title: A very specific, distinct title (e.g., "The 'Vouloir' Trap" or "Mastering Plural Adjectives").
+    2. whyYouMadeIt: A psychological insight into the root cause of these specific mistakes.
+    3. theRule: A simple, actionable rule.
+    4. mentalTrick: A mnemonic or mental visualization to avoid this ever again.
+    5. conjugationTable: If a verb is the root of these errors, provide its present tense forms (je, tu, il_elle, nous, vous, ils_elles).
+
+    Output JSON ONLY.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          category: { type: Type.STRING },
+          mistakes: { type: Type.ARRAY, items: { type: Type.STRING } },
+          whyYouMadeIt: { type: Type.STRING },
+          theRule: { type: Type.STRING },
+          mentalTrick: { type: Type.STRING },
+          conjugationTable: { 
+            type: Type.OBJECT, 
+            description: "Optional conjugation mapping for the specific verb problem.",
+            properties: {
+              je: { type: Type.STRING },
+              tu: { type: Type.STRING },
+              il_elle: { type: Type.STRING },
+              nous: { type: Type.STRING },
+              vous: { type: Type.STRING },
+              ils_elles: { type: Type.STRING }
+            }
+          }
+        },
+        required: ["title", "category", "mistakes", "whyYouMadeIt", "theRule", "mentalTrick"]
+      }
+    }
+  });
+
+  return response.text || "{}";
 };
 
 // --- Audio / TTS Logic ---

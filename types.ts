@@ -22,11 +22,24 @@ export interface MistakeRecord {
   timestamp: number;
 }
 
+export interface CoachLesson {
+  id: string;
+  title: string;
+  category: string;
+  mistakes: string[];
+  whyYouMadeIt: string;
+  theRule: string;
+  mentalTrick: string;
+  conjugationTable?: { [key: string]: string };
+  timestamp: number;
+}
+
 export interface BrainStats {
   totalCorrections: number;
   categories: Record<string, number>;
   history: MistakeRecord[];
   sparks: number;
+  archivedLessons: CoachLesson[];
 }
 
 export interface Message {
@@ -53,11 +66,18 @@ export const UI_TRANSLATIONS = {
     listen: "Listen to pronunciation",
     resetConfirm: "Start a new session?",
     analyzing: "Analyzing your French...",
-    statsTitle: "Learning Progress",
-    statsAccuracy: "Accuracy Score",
+    statsTitle: "Precision Level",
+    statsSubtitle: "Based on your recent linguistic patterns.",
     statsTotal: "Total Mistakes",
     statsCommon: "Common Pitfalls",
     statsNoData: "Start practicing to see your brain analytics!",
+    brainLearning: "Your brain is learning...",
+    brainUnlock: "Analyze {n} more sentences to unlock your Precision Dashboard.",
+    coachTitle: "New Mission Available",
+    coachTrigger: "Detected a pattern in: {cat}",
+    coachButton: "Analyze & Solve",
+    archiveTitle: "Knowledge Library",
+    archiveEmpty: "Your solved lessons will appear here.",
     proLabel: "PRO",
     upgradeTitle: "Unlock Your Potential",
     upgradeDesc: "Get the full FrenchMentor experience and accelerate your learning.",
@@ -89,11 +109,18 @@ export const UI_TRANSLATIONS = {
     listen: "Écouter la prononciation",
     resetConfirm: "Commencer une nouvelle session ?",
     analyzing: "Analyse de votre français...",
-    statsTitle: "Progrès de l'apprentissage",
-    statsAccuracy: "Score de Précision",
+    statsTitle: "Niveau de Précision",
+    statsSubtitle: "Basé sur vos récents schémas linguistiques.",
     statsTotal: "Total des Erreurs",
     statsCommon: "Erreurs Fréquentes",
     statsNoData: "Commencez à pratiquer pour voir vos analyses !",
+    brainLearning: "Votre cerveau apprend...",
+    brainUnlock: "Analysez {n} phrases de plus pour débloquer votre tableau de bord.",
+    coachTitle: "Nouvelle Mission",
+    coachTrigger: "Schéma détecté : {cat}",
+    coachButton: "Analyser & Résoudre",
+    archiveTitle: "Bibliothèque de Savoir",
+    archiveEmpty: "Vos leçons résolues apparaîtront ici.",
     proLabel: "PRO",
     upgradeTitle: "Libérez votre potentiel",
     upgradeDesc: "Obtenez l'expérience FrenchMentor complète et accélérez votre apprentissage.",
@@ -125,11 +152,18 @@ export const UI_TRANSLATIONS = {
     listen: "استمع إلى النطق",
     resetConfirm: "هل تريد بدء جلسة جديدة؟",
     analyzing: "جاري تحليل لغتك الفرنسية...",
-    statsTitle: "تقدم التعلم",
-    statsAccuracy: "درجة الدقة",
+    statsTitle: "مستوى الدقة",
+    statsSubtitle: "بناءً على أنماطك اللغوية الأخيرة.",
     statsTotal: "إجمالي الأخطاء",
     statsCommon: "الأخطاء الشائعة",
     statsNoData: "ابدأ التمرين لرؤية تحليلات دماغك!",
+    brainLearning: "دماغك يتعلم...",
+    brainUnlock: "حلل {n} جمل إضافية لفتح لوحة التحكم الخاصة بك.",
+    coachTitle: "مهمة جديدة متاحة",
+    coachTrigger: "تم اكتشاف نمط في: {cat}",
+    coachButton: "تحليل وحل",
+    archiveTitle: "مكتبة المعرفة",
+    archiveEmpty: "ستظهر دروسك المحلولة هنا.",
     proLabel: "برو",
     upgradeTitle: "أطلق العنان لقدراتك",
     upgradeDesc: "احصل على تجربة FrenchMentor الكاملة وسرع تعلمك.",

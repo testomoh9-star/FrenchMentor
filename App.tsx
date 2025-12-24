@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse } from './types';
+import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson } from './types';
 import { sendMessageToGemini, resetChatSession } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -33,14 +33,16 @@ const App: React.FC = () => {
   const [stats, setStats] = useState<BrainStats>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_STATS);
     try { 
-      return saved ? JSON.parse(saved) : {
+      const parsed = saved ? JSON.parse(saved) : null;
+      return parsed || {
         totalCorrections: 0,
         categories: {},
         history: [],
-        sparks: 10
+        sparks: 10,
+        archivedLessons: []
       }; 
     } catch (e) { 
-      return { totalCorrections: 0, categories: {}, history: [], sparks: 10 }; 
+      return { totalCorrections: 0, categories: {}, history: [], sparks: 10, archivedLessons: [] }; 
     }
   });
 
@@ -99,13 +101,22 @@ const App: React.FC = () => {
     }
   }, [language, messages, stats.sparks, isPro, t]);
 
+  const handleArchiveLesson = useCallback((lesson: CoachLesson) => {
+    setStats(prev => ({
+      ...prev,
+      archivedLessons: [...prev.archivedLessons, { ...lesson, timestamp: Date.now() }]
+    }));
+  }, []);
+
   const handleReset = useCallback(() => {
     if (window.confirm(t.resetConfirm)) {
       setMessages([]);
-      setStats(prev => ({ ...prev, totalCorrections: 0, categories: {}, history: [], sparks: isPro ? 999 : 10 }));
+      setStats(prev => ({ ...prev, totalCorrections: 0, categories: {}, history: [], sparks: isPro ? 999 : 10, archivedLessons: [] }));
       resetChatSession();
     }
   }, [t, isPro]);
+
+  const userMessageCount = messages.filter(m => m.role === 'user').length;
 
   if (configError) {
     return (
@@ -165,7 +176,14 @@ const App: React.FC = () => {
             )}
           </div>
         ) : (
-          <BrainDashboard stats={stats} language={language} isPro={isPro} onUpgradeClick={() => setShowProModal(true)} />
+          <BrainDashboard 
+            stats={stats} 
+            language={language} 
+            isPro={isPro} 
+            onUpgradeClick={() => setShowProModal(true)} 
+            userMessageCount={userMessageCount}
+            onArchiveLesson={handleArchiveLesson}
+          />
         )}
       </main>
 
