@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson } from './types';
 import { sendMessageToGemini, resetChatSession } from './services/geminiService';
 import Header from './components/Header';
@@ -118,6 +118,13 @@ const App: React.FC = () => {
 
   const userMessageCount = messages.filter(m => m.role === 'user').length;
 
+  const pendingMissionsCount = useMemo(() => {
+    return Object.entries(stats.categories).filter(([cat, count]) => {
+      const archivedCount = stats.archivedLessons.filter(l => l.category === cat).length;
+      return (Math.floor(Number(count) / 3)) > archivedCount;
+    }).length;
+  }, [stats.categories, stats.archivedLessons]);
+
   if (configError) {
     return (
       <div className="h-full flex items-center justify-center bg-slate-50 p-6 text-center">
@@ -141,6 +148,7 @@ const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isPro={isPro}
+        hasNotifications={isPro && pendingMissionsCount > 0}
       />
 
       <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth flex flex-col">
