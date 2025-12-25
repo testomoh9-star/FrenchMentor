@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Languages, RefreshCw, ChevronDown, Zap, MessageSquare, Brain, Crown, PanelLeft } from 'lucide-react';
+import { Languages, RefreshCw, ChevronDown, Zap, MessageSquare, Brain, Crown } from 'lucide-react';
 import { SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface HeaderProps {
@@ -12,7 +12,6 @@ interface HeaderProps {
   setActiveTab: (tab: 'practice' | 'brain') => void;
   isPro?: boolean;
   hasNotifications?: boolean;
-  toggleSidebar: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -23,23 +22,15 @@ const Header: React.FC<HeaderProps> = ({
   activeTab, 
   setActiveTab,
   isPro,
-  hasNotifications,
-  toggleSidebar
+  hasNotifications
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-3 z-50 flex items-center justify-between shadow-sm shrink-0 sticky top-0 safe-top">
-      <div className="flex items-center gap-1.5 sm:gap-3 min-w-fit">
-        <button 
-          onClick={toggleSidebar}
-          className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-all active:scale-95"
-          title="Toggle Sidebar"
-        >
-          <PanelLeft size={20} />
-        </button>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-fit">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="bg-blue-600 p-2 rounded-lg text-white shadow-blue-200 shadow-md hidden sm:block">
             <Languages size={18} />
           </div>
@@ -94,7 +85,7 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        <button onClick={onReset} className="p-1.5 text-slate-400 hover:text-red-500 rounded-full transition-all">
+        <button onClick={onReset} className="p-1.5 text-slate-400 hover:text-red-500 rounded-full transition-all" title="Reset Session">
           <RefreshCw size={16} />
         </button>
       </div>

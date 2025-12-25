@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { BrainStats, SupportLanguage, UI_TRANSLATIONS, CoachLesson } from '../types';
 import { Brain, Trophy, BarChart3, Clock, Lock, Crown, ArrowRight, Sparkles, Loader2, X, Lightbulb, BookOpen, ChevronRight, History } from 'lucide-react';
-import { generateCoachLesson } from '../services/geminiService';
+import { generateCoachLesson, parseSafeJson } from '../services/geminiService';
 
 interface BrainDashboardProps {
   stats: BrainStats;
@@ -30,12 +30,27 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
     return (t.catMap as any)[catKey] || catKey;
   };
 
-  // Logic: 1 mission per 3 unique mistakes in a category.
+  /**
+   * Pending Missions Logic:
+   * We calculate how many missions (batches of 3 errors) are available versus archived.
+   * If a category has 9 errors and 1 archived lesson, it has 2 pending missions.
+   */
   const pendingMissions = useMemo(() => {
-    return Object.entries(stats.categories).filter(([cat, count]) => {
+    const missions: { cat: string; count: number; missionIndex: number }[] = [];
+    Object.entries(stats.categories).forEach(([cat, count]) => {
       const archivedCount = stats.archivedLessons.filter(l => l.category === cat).length;
-      return (Math.floor(Number(count) / 3)) > archivedCount;
+      const totalAvailable = Math.floor(Number(count) / 3);
+      
+      // If we have more available batches than archived ones, show the next mission
+      if (totalAvailable > archivedCount) {
+        missions.push({ 
+          cat, 
+          count: Number(count), 
+          missionIndex: archivedCount + 1 
+        });
+      }
     });
+    return missions;
   }, [stats.categories, stats.archivedLessons]);
 
   const handleOpenCoachLesson = async (category: string) => {
@@ -46,11 +61,18 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
     setLoadingCategory(category);
     try {
       const responseJson = await generateCoachLesson(category, stats.history, language);
+      const parsedData = parseSafeJson(responseJson);
       const lessonData: CoachLesson = { 
-        ...JSON.parse(responseJson), 
+        ...parsedData, 
         id: Date.now().toString(),
         timestamp: Date.now()
       };
+      
+      // CRITICAL: Archive immediately so it's saved in the library 
+      // even if the user just closes the modal with 'X'.
+      // This also causes the Mission Card to disappear from the UI instantly.
+      onArchiveLesson(lessonData);
+      
       setActiveLesson(lessonData);
     } catch (e) {
       console.error("Coach failed:", e);
@@ -59,13 +81,8 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
     }
   };
 
-  const handleGotIt = () => {
-    if (activeLesson) {
-      if (!stats.archivedLessons.some(l => l.id === activeLesson.id)) {
-        onArchiveLesson(activeLesson);
-      }
-      setActiveLesson(null);
-    }
+  const handleCloseModal = () => {
+    setActiveLesson(null);
   };
 
   const formatTimeAgo = (ts: number) => {
@@ -141,23 +158,23 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
                <Sparkles size={14} className="text-blue-500" /> {t.coachTitle}
              </h3>
              <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2 scrollbar-hide">
-                {pendingMissions.map(([cat], index) => (
-                  <div key={cat} className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-3xl text-white shadow-lg flex flex-col justify-between shrink-0 relative group">
+                {pendingMissions.map((mission) => (
+                  <div key={mission.cat} className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-3xl text-white shadow-lg flex flex-col justify-between shrink-0 relative group">
                     <div className="absolute top-4 right-4 bg-white/10 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest">
-                      #{index + 1}
+                      #{mission.missionIndex}
                     </div>
                     <div className="mb-4 pr-10">
-                      <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">{translateCat(cat)}</p>
+                      <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">{translateCat(mission.cat)}</p>
                       <p className="text-base font-bold leading-tight line-clamp-2">
-                        {t.coachTrigger.replace("{cat}", translateCat(cat))}
+                        {t.coachTrigger.replace("{cat}", translateCat(mission.cat))}
                       </p>
                     </div>
                     <button 
-                      onClick={() => handleOpenCoachLesson(cat)}
+                      onClick={() => handleOpenCoachLesson(mission.cat)}
                       disabled={loadingCategory !== null}
                       className="bg-white text-indigo-600 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-indigo-50 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
                     >
-                      {loadingCategory === cat ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
+                      {loadingCategory === mission.cat ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
                       {t.coachButton}
                     </button>
                     {!isPro && (
@@ -265,7 +282,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
            <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
               <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-8 text-white relative shrink-0">
-                <button onClick={() => setActiveLesson(null)} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
+                <button onClick={handleCloseModal} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
                    <X size={20} />
                 </button>
                 <div className="flex items-center gap-3 mb-2">
@@ -288,16 +305,16 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
                   <p className="text-slate-800 font-bold text-base sm:text-lg leading-snug">{activeLesson.theRule}</p>
                 </section>
 
-                {activeLesson.conjugationTable && (
+                {activeLesson.conjugationTable && Object.keys(activeLesson.conjugationTable).length > 0 && (
                   <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                     <div className="bg-slate-100 px-4 py-2 border-b border-slate-200">
-                      <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Key Forms</h5>
+                      <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Verb Conjugation</h5>
                     </div>
-                    <div className="grid grid-cols-2 divide-x divide-y divide-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-y divide-slate-100">
                       {Object.entries(activeLesson.conjugationTable).map(([pronoun, form]) => (
-                        <div key={pronoun} className="px-4 py-2.5 flex justify-between items-center bg-white">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">{pronoun.replace('_',' ')}</span>
-                          <span className="text-sm font-black text-blue-700">{form}</span>
+                        <div key={pronoun} className="px-4 py-3 flex flex-col bg-white">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">{pronoun.replace(/_/g,' ')}</span>
+                          <span className="text-sm font-black text-indigo-700 truncate">{form}</span>
                         </div>
                       ))}
                     </div>
@@ -315,7 +332,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
 
               <div className="p-8 pt-4 shrink-0 border-t bg-slate-50">
                 <button 
-                  onClick={handleGotIt}
+                  onClick={handleCloseModal}
                   className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-slate-100 active:scale-95 transition-all"
                 >
                   Got it!

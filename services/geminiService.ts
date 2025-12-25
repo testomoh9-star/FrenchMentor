@@ -15,6 +15,32 @@ const getAI = () => {
   return aiInstance;
 };
 
+/**
+ * Robustly cleans and parses JSON from model output
+ */
+const parseSafeJson = (text: string) => {
+  let cleaned = text.trim();
+  // Remove markdown code blocks if present
+  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
+  cleaned = cleaned.replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Original text failed to parse:", text);
+    // If it's a truncation error (unterminated), try to find the last closing brace
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      try {
+        return JSON.parse(cleaned.substring(0, lastBrace + 1));
+      } catch (inner) {
+        throw e; // throw original
+      }
+    }
+    throw e;
+  }
+};
+
 const SYSTEM_INSTRUCTION = `
 You are "FrenchMentor", an elite French language tutor. You help users improve their French through correction or translation.
 
@@ -113,15 +139,15 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
   
   const prompt = `
     You are an elite French coach. The user has repetitive errors in the category: "${category}".
-    Mistakes: ${filteredMistakes}.
+    Recent context: ${filteredMistakes}.
     
-    Generate a laser-focused report in ${language}.
+    Generate a laser-focused report in ${language}. Keep it concise (max 300 words total).
     
-    1. title: Use a SIMPLE, INDICATIVE title. (e.g., "Le verbe 'Aller' au passé", "Les prépositions 'Dans' et 'En'").
+    1. title: Use a SIMPLE, INDICATIVE title.
     2. whyYouMadeIt: Brief insight.
     3. theRule: A clear, simple rule in ${language}.
     4. mentalTrick: A mnemonic.
-    5. conjugationTable: If a verb is central, provide present tense forms.
+    5. conjugationTable: ONLY provide this if the category is "Conjugation" or if seeing the forms is strictly necessary. Otherwise, omit this field.
 
     Output JSON ONLY. All text content MUST be in ${language}.
   `;
@@ -168,12 +194,13 @@ export const generateDeepDive = async (context: string, language: SupportLanguag
     The user needs a "Deep Dive" structured lesson in ${language}.
     
     FORMAT RULES:
-    1. Start with a clear bold title.
+    1. Start with a clear bold title using # (e.g. # Title).
     2. Use a numbered list for key points.
     3. Provide exactly 3 clear examples (French with English translation).
     4. End with one "Actionable Tip".
-    5. Keep it structured and visually clean.
-    6. Language of lesson: ${language}.
+    5. IMPORTANT: Use standard Markdown for bold (**text**). Ensure you do not leave spaces between the stars and the text.
+    6. Keep it structured and visually clean.
+    7. Language of lesson: ${language}.
 
     Respond with the lesson content only.
   `;
@@ -250,3 +277,5 @@ export const playFrenchTTS = async (text: string): Promise<void> => {
     };
   });
 };
+
+export { parseSafeJson };

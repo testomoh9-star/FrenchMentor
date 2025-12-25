@@ -58,6 +58,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
 
   const contextForDive = `Original: ${data.corrections?.[0]?.original || ''}. Correction: ${data.correctedFrench}. Notes: ${data.tutorNotes}`;
 
+  // Mini parser for **bold** text (handles potential spaces and ensures clean rendering)
+  const renderLineWithBold = (line: string) => {
+    if (!line) return null;
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const inner = part.slice(2, -2);
+        return <strong key={i} className="font-black text-slate-900">{inner}</strong>;
+      }
+      return part;
+    });
+  };
+
   return (
     <div className={`flex justify-center w-full mb-6 sm:mb-10 ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
       <div className="w-full max-w-2xl flex flex-col gap-3 sm:gap-4">
@@ -136,9 +149,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
                    {data.deepDive.split('\n').map((line, i) => {
                      const trimmedLine = line.trim();
                      if (!trimmedLine) return null;
-                     if (trimmedLine.startsWith('#') || (i === 0 && !trimmedLine.match(/^\d\./))) {
-                       return <h5 key={i} className="text-xl font-black text-slate-900 mb-4">{trimmedLine.replace(/#/g, '').trim()}</h5>;
+                     
+                     // Header check
+                     if (trimmedLine.startsWith('#')) {
+                       return <h5 key={i} className="text-xl font-black text-slate-900 mb-4 mt-2">{renderLineWithBold(trimmedLine.replace(/#/g, '').trim())}</h5>;
                      }
+                     
+                     // Numbered list check
                      const match = trimmedLine.match(/^(\d+)\.\s+(.*)/);
                      if (match) {
                        return (
@@ -146,11 +163,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
                           <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-sm shrink-0">
                             {match[1]}
                           </div>
-                          <p className="text-sm font-medium text-slate-700 leading-relaxed pt-1">{match[2]}</p>
+                          <p className="text-sm font-medium text-slate-700 leading-relaxed pt-1 flex-1">{renderLineWithBold(match[2])}</p>
                         </div>
                        );
                      }
-                     return <p key={i} className="text-sm text-slate-600 leading-relaxed font-medium">{trimmedLine}</p>;
+                     
+                     // Default text with bold support
+                     return <p key={i} className="text-sm text-slate-600 leading-relaxed font-medium">{renderLineWithBold(trimmedLine)}</p>;
                    })}
                 </div>
                 
