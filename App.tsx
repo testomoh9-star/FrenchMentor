@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Message, SupportLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation } from './types';
+import { Message, SupportLanguage, SystemLanguage, AppTheme, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation } from './types';
 import { sendMessageToGemini, resetChatSession, generateDeepDive } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -9,17 +9,23 @@ import EmptyState from './components/EmptyState';
 import BrainDashboard from './components/BrainDashboard';
 import ProModal from './components/ProModal';
 import Sidebar from './components/Sidebar';
+import SettingsModal from './components/SettingsModal';
+import FeedbackModal from './components/FeedbackModal';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'french_mentor_conversations';
 const STORAGE_KEY_CUR_CONV = 'french_mentor_cur_conv';
-const STORAGE_KEY_LANGUAGE = 'french_mentor_language';
+const STORAGE_KEY_SYSTEM_LANG = 'french_mentor_system_lang';
+const STORAGE_KEY_AI_LANG = 'french_mentor_ai_lang';
+const STORAGE_KEY_THEME = 'french_mentor_theme';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
 const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
   const [showProModal, setShowProModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [isPro, setIsPro] = useState<boolean>(() => localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true');
   const [configError, setConfigError] = useState<string | null>(null);
@@ -33,8 +39,16 @@ const App: React.FC = () => {
     return localStorage.getItem(STORAGE_KEY_CUR_CONV);
   });
 
-  const [language, setLanguage] = useState<SupportLanguage>(() => {
-    return (localStorage.getItem(STORAGE_KEY_LANGUAGE) as SupportLanguage) || 'English';
+  const [systemLang, setSystemLang] = useState<SystemLanguage>(() => {
+    return (localStorage.getItem(STORAGE_KEY_SYSTEM_LANG) as SystemLanguage) || 'English';
+  });
+
+  const [aiLang, setAiLang] = useState<SupportLanguage>(() => {
+    return (localStorage.getItem(STORAGE_KEY_AI_LANG) as SupportLanguage) || 'French';
+  });
+
+  const [theme, setTheme] = useState<AppTheme>(() => {
+    return (localStorage.getItem(STORAGE_KEY_THEME) as AppTheme) || 'light';
   });
 
   const [stats, setStats] = useState<BrainStats>(() => {
@@ -49,15 +63,30 @@ const App: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const t = UI_TRANSLATIONS[language];
-  const isRtl = language === 'Arabic';
+  const t = UI_TRANSLATIONS[systemLang];
+  const isRtl = systemLang === 'Arabic';
 
   const currentMessages = useMemo(() => {
     if (!activeConvId) return [];
     return conversations.find(c => c.id === activeConvId)?.messages || [];
   }, [activeConvId, conversations]);
 
-  // --- PERSISTENCE ---
+  // Apply Theme
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.body.classList.replace('bg-slate-50', 'bg-slate-950');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.replace('bg-slate-950', 'bg-slate-50');
+    }
+    localStorage.setItem(STORAGE_KEY_THEME, theme);
+  }, [theme]);
+
+  // Persist Languages
+  useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEY_AI_LANG, aiLang); }, [aiLang]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CONVS, JSON.stringify(conversations));
     if (activeTab === 'practice') {
@@ -66,7 +95,6 @@ const App: React.FC = () => {
   }, [conversations, activeTab]);
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats)); }, [stats]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_LANGUAGE, language); }, [language]);
   useEffect(() => { localStorage.setItem(STORAGE_KEY_IS_PRO, String(isPro)); }, [isPro]);
   useEffect(() => { if(activeConvId) localStorage.setItem(STORAGE_KEY_CUR_CONV, activeConvId); }, [activeConvId]);
 
@@ -127,7 +155,7 @@ const App: React.FC = () => {
     if (!isPro) setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - 2) }));
 
     try {
-      const jsonResponse = await sendMessageToGemini(content, language, currentMessages);
+      const jsonResponse = await sendMessageToGemini(content, aiLang, currentMessages);
       const data: CorrectionResponse = JSON.parse(jsonResponse);
       
       const newAiMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', content: jsonResponse, timestamp: Date.now() };
@@ -156,7 +184,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [language, currentMessages, activeConvId, conversations, stats.sparks, isPro, t]);
+  }, [aiLang, currentMessages, activeConvId, conversations, stats.sparks, isPro, t]);
 
   const handleDeepDive = useCallback(async (messageId: string, contextText: string) => {
     if (!isPro) {
@@ -170,7 +198,7 @@ const App: React.FC = () => {
     } : conv));
 
     try {
-      const deepDiveContent = await generateDeepDive(contextText, language);
+      const deepDiveContent = await generateDeepDive(contextText, aiLang);
       setConversations(prev => prev.map(conv => conv.id === activeConvId ? {
         ...conv,
         messages: conv.messages.map(m => {
@@ -189,7 +217,7 @@ const App: React.FC = () => {
         messages: conv.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: false } : m)
       } : conv));
     }
-  }, [activeConvId, language, isPro]);
+  }, [activeConvId, aiLang, isPro]);
 
   const handleArchiveLesson = useCallback((lesson: CoachLesson) => {
     setStats(prev => {
@@ -234,9 +262,9 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-full bg-slate-50 relative font-sans ${isRtl ? 'font-arabic' : ''}`}>
+    <div className={`flex h-full transition-colors duration-300 relative font-sans ${isRtl ? 'font-arabic' : ''} ${theme === 'dark' ? 'dark bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
       <Sidebar 
-        language={language}
+        language={systemLang}
         conversations={conversations}
         activeConversationId={activeConvId}
         onNewChat={handleNewChat}
@@ -250,13 +278,14 @@ const App: React.FC = () => {
         isExpanded={isSidebarExpanded}
         onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
         translateCat={(cat) => (t.catMap as any)[cat] || cat}
+        onOpenSettings={() => setShowSettingsModal(true)}
+        onOpenFeedback={() => setShowFeedbackModal(true)}
       />
 
       <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
         <Header 
           onReset={handleReset} 
-          language={language} 
-          setLanguage={setLanguage} 
+          language={systemLang} 
           sparks={isPro ? 999 : stats.sparks}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -271,7 +300,7 @@ const App: React.FC = () => {
                 <div className="flex-1 flex flex-col items-center justify-center">
                   <EmptyState 
                     onSuggestionClick={handleSendMessage} 
-                    language={language} 
+                    language={systemLang} 
                   />
                 </div>
               ) : (
@@ -280,7 +309,7 @@ const App: React.FC = () => {
                     <MessageBubble 
                       key={msg.id} 
                       message={msg} 
-                      language={language} 
+                      language={systemLang} 
                       isPro={isPro} 
                       onLockClick={() => setShowProModal(true)}
                       onDeepDive={handleDeepDive}
@@ -288,9 +317,9 @@ const App: React.FC = () => {
                   ))}
                   {isLoading && (
                     <div className={`flex justify-center w-full my-4 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-full shadow-md border border-slate-100 flex items-center gap-3">
+                      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-6 py-4 rounded-full shadow-md border border-slate-100 dark:border-slate-700 flex items-center gap-3">
                         <Loader2 className="animate-spin text-blue-600" size={18} />
-                        <span className="text-slate-600 font-bold text-sm">{t.analyzing}</span>
+                        <span className="text-slate-600 dark:text-slate-300 font-bold text-sm">{t.analyzing}</span>
                       </div>
                     </div>
                   )}
@@ -300,7 +329,7 @@ const App: React.FC = () => {
           ) : (
             <BrainDashboard 
               stats={stats} 
-              language={language} 
+              language={systemLang} 
               isPro={isPro} 
               onUpgradeClick={() => setShowProModal(true)} 
               userMessageCount={conversations.reduce((acc, c) => acc + c.messages.filter(m => m.role === 'user').length, 0)}
@@ -311,12 +340,31 @@ const App: React.FC = () => {
 
         {activeTab === 'practice' && (
           <footer className="shrink-0">
-            <InputArea onSend={handleSendMessage} isLoading={isLoading} language={language} sparks={isPro ? 999 : stats.sparks} />
+            <InputArea onSend={handleSendMessage} isLoading={isLoading} language={systemLang} sparks={isPro ? 999 : stats.sparks} />
           </footer>
         )}
       </div>
 
-      {showProModal && <ProModal language={language} onClose={() => setShowProModal(false)} onUpgrade={() => { setIsPro(true); setShowProModal(false); }} />}
+      {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={() => { setIsPro(true); setShowProModal(false); }} />}
+      
+      {showSettingsModal && (
+        <SettingsModal 
+          language={systemLang}
+          aiLang={aiLang}
+          theme={theme}
+          onClose={() => setShowSettingsModal(false)}
+          onSetSystemLang={setSystemLang}
+          onSetAiLang={setAiLang}
+          onSetTheme={setTheme}
+        />
+      )}
+
+      {showFeedbackModal && (
+        <FeedbackModal 
+          language={systemLang}
+          onClose={() => setShowFeedbackModal(false)}
+        />
+      )}
     </div>
   );
 };

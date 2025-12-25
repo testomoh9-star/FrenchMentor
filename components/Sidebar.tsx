@@ -1,10 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { BookOpen, History, Lightbulb, ChevronRight, Crown, Lock, UserCircle, MoreVertical, Trash2, Edit3, Check, PanelLeft, SquarePen, Menu } from 'lucide-react';
-import { SupportLanguage, UI_TRANSLATIONS, Conversation, CoachLesson } from '../types';
+import { BookOpen, History, Lightbulb, ChevronRight, Crown, Lock, UserCircle, MoreVertical, Trash2, Edit3, Check, PanelLeft, SquarePen, Menu, Settings, MessageCircle, LogOut, Sparkles } from 'lucide-react';
+import { SystemLanguage, UI_TRANSLATIONS, Conversation, CoachLesson } from '../types';
 
 interface SidebarProps {
-  language: SupportLanguage;
+  language: SystemLanguage;
   conversations: Conversation[];
   activeConversationId: string | null;
   onNewChat: () => void;
@@ -18,6 +18,8 @@ interface SidebarProps {
   isExpanded: boolean;
   onToggle: () => void;
   translateCat: (cat: string) => string;
+  onOpenSettings: () => void;
+  onOpenFeedback: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -34,13 +36,16 @@ const Sidebar: React.FC<SidebarProps> = ({
   onUpgradeClick,
   isExpanded,
   onToggle,
-  translateCat
+  translateCat,
+  onOpenSettings,
+  onOpenFeedback
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
   const [editingId, setEditingId] = useState<string | null>(null);
   const [renamingValue, setRenamingValue] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,19 +54,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [editingId]);
 
-  // Click away listener for the more menu
   useEffect(() => {
     const handleClickAway = (e: MouseEvent) => {
-      if (menuOpenId) {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.chat-menu-container')) {
-          setMenuOpenId(null);
-        }
+      const target = e.target as HTMLElement;
+      if (menuOpenId && !target.closest('.chat-menu-container')) {
+        setMenuOpenId(null);
+      }
+      if (userMenuOpen && !target.closest('.user-menu-container')) {
+        setUserMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickAway);
     return () => document.removeEventListener('mousedown', handleClickAway);
-  }, [menuOpenId]);
+  }, [menuOpenId, userMenuOpen]);
 
   const formatTimeAgo = (ts: number) => {
     const diff = Date.now() - ts;
@@ -93,12 +98,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Backdrop */}
       {isMobile && isExpanded && (
-        <div 
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80]"
-          onClick={onToggle}
-        />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80]" onClick={onToggle} />
       )}
 
       <aside 
@@ -112,33 +113,48 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* THE RAIL */}
         <div className="w-16 flex flex-col items-center py-4 border-r border-slate-800/50 shrink-0">
-          <button 
-            onClick={onToggle}
-            className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-8"
-          >
+          <button onClick={onToggle} className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-8">
             <PanelLeft size={22} />
           </button>
 
-          <button 
-            onClick={onNewChat}
-            className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-4"
-            title={t.newChat}
-          >
+          <button onClick={onNewChat} className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-4" title={t.newChat}>
             <SquarePen size={22} />
           </button>
 
-          <div className="mt-auto flex flex-col gap-4">
-            {!isPro && (
-              <button 
-                onClick={onUpgradeClick}
-                className="p-3 text-indigo-400 hover:text-indigo-300 hover:bg-white/10 rounded-xl transition-all"
-                title="Upgrade to Pro"
-              >
-                <Crown size={20} />
-              </button>
+          <div className="mt-auto flex flex-col gap-2 relative user-menu-container">
+            {userMenuOpen && (
+              <div className={`absolute bottom-full mb-2 ${isRtl ? 'right-0' : 'left-0'} w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}>
+                <div className="flex items-center gap-3 p-3 mb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black">JN</div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black dark:text-white truncate">jnfe</p>
+                    <p className="text-[10px] text-slate-400 truncate">@jnfe</p>
+                  </div>
+                </div>
+
+                {!isPro && (
+                  <button onClick={() => { onUpgradeClick(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
+                    <Sparkles size={16} className="text-blue-500" /> {t.upgradeTitle}
+                  </button>
+                )}
+                
+                <button onClick={() => { onOpenSettings(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
+                  <Settings size={16} /> {t.settings}
+                </button>
+                
+                <button onClick={() => { onOpenFeedback(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
+                  <MessageCircle size={16} /> {t.feedback}
+                </button>
+
+                <div className="h-px bg-slate-100 dark:border-slate-800 my-2" />
+                
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all">
+                  <LogOut size={16} /> {t.logout}
+                </button>
+              </div>
             )}
-            <button className="p-3 text-slate-500 hover:text-white transition-all">
-              <UserCircle size={24} />
+            <button onClick={() => setUserMenuOpen(!userMenuOpen)} className={`p-2 rounded-xl transition-all ${userMenuOpen ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white hover:bg-white/10'}`}>
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-xs">JN</div>
             </button>
           </div>
         </div>
@@ -157,10 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               ) : (
                 conversations.slice().reverse().map((conv) => (
-                  <div 
-                    key={conv.id} 
-                    className={`relative group ${menuOpenId === conv.id ? 'z-50' : 'z-10'}`}
-                  >
+                  <div key={conv.id} className={`relative group ${menuOpenId === conv.id ? 'z-50' : 'z-10'}`}>
                     {editingId === conv.id ? (
                       <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-xl border border-blue-500/50">
                         <input
@@ -192,25 +205,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                     
                     {editingId !== conv.id && (
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 chat-menu-container">
-                         <button 
-                           onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === conv.id ? null : conv.id); }}
-                           className={`p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-all ${menuOpenId === conv.id ? 'text-white bg-white/10 opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                         >
+                         <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === conv.id ? null : conv.id); }} className={`p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-all ${menuOpenId === conv.id ? 'text-white bg-white/10 opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                            <MoreVertical size={14} />
                          </button>
-                         
                          {menuOpenId === conv.id && (
                            <div className="absolute right-full top-0 mr-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150">
-                              <button 
-                                onClick={(e) => handleStartRename(e, conv)}
-                                className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all"
-                              >
+                              <button onClick={(e) => handleStartRename(e, conv)} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all">
                                 <Edit3 size={14} /> Rename
                               </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }}
-                                className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                              >
+                              <button onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
                                 <Trash2 size={14} /> Delete
                               </button>
                            </div>
@@ -239,11 +242,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <p className="px-4 py-3 text-[10px] text-white/10 italic">Library is empty</p>
                 ) : (
                   archivedLessons.slice().reverse().map((lesson) => (
-                    <button 
-                      key={lesson.id}
-                      onClick={() => onSelectLesson(lesson)}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left text-white/50 hover:bg-white/5 hover:text-white group"
-                    >
+                    <button key={lesson.id} onClick={() => onSelectLesson(lesson)} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left text-white/50 hover:bg-white/5 hover:text-white group">
                       <div className="bg-indigo-500/10 p-2 rounded-lg text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
                         <Lightbulb size={12} />
                       </div>
@@ -269,10 +268,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               </div>
             ) : (
-              <button 
-                onClick={onUpgradeClick}
-                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-between transition-all group"
-              >
+              <button onClick={onUpgradeClick} className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-between transition-all group">
                 <div className="flex items-center gap-2">
                   <Crown size={14} className="text-white/80 group-hover:text-white" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Join Pro</span>
@@ -284,12 +280,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </aside>
 
-      {/* Floating mobile toggle when collapsed */}
       {isMobile && !isExpanded && (
-        <button 
-          onClick={onToggle}
-          className="fixed top-4 left-4 z-[100] p-3 bg-white shadow-xl rounded-xl text-slate-600 active:scale-95"
-        >
+        <button onClick={onToggle} className="fixed top-4 left-4 z-[100] p-3 bg-white shadow-xl rounded-xl text-slate-600 active:scale-95">
           <Menu size={20} />
         </button>
       )}
