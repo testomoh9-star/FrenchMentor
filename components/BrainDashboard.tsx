@@ -17,13 +17,18 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
   const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
-  const [isGeneratingLesson, setIsGeneratingLesson] = useState(false);
+  const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
 
   const totalCorrectionsNum = Number(stats.totalCorrections || 0);
   const precisionLevel = Math.max(40, 100 - (totalCorrectionsNum * 1.5));
   
   const isUnlocked = userMessageCount >= 3;
   const remainingToUnlock = Math.max(0, 3 - userMessageCount);
+
+  // Map category keys (Grammar, etc.) to translated names
+  const translateCat = (catKey: string) => {
+    return (t.catMap as any)[catKey] || catKey;
+  };
 
   // Logic: 1 mission per 3 unique mistakes in a category.
   const pendingMissions = useMemo(() => {
@@ -38,7 +43,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
       onUpgradeClick?.();
       return;
     }
-    setIsGeneratingLesson(true);
+    setLoadingCategory(category);
     try {
       const responseJson = await generateCoachLesson(category, stats.history, language);
       const lessonData: CoachLesson = { 
@@ -50,7 +55,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
     } catch (e) {
       console.error("Coach failed:", e);
     } finally {
-      setIsGeneratingLesson(false);
+      setLoadingCategory(null);
     }
   };
 
@@ -61,6 +66,16 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
       }
       setActiveLesson(null);
     }
+  };
+
+  const formatTimeAgo = (ts: number) => {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return language === 'Arabic' ? 'الآن' : 'now';
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return new Date(ts).toLocaleDateString();
   };
 
   if (!isUnlocked) {
@@ -126,24 +141,27 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
                <Sparkles size={14} className="text-blue-500" /> {t.coachTitle}
              </h3>
              <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2 scrollbar-hide">
-                {pendingMissions.map(([cat]) => (
-                  <div key={cat} className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-br from-indigo-500 to-blue-600 p-4 rounded-3xl text-white shadow-lg flex flex-col justify-between shrink-0 relative group">
-                    <div className="mb-4">
-                      <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">{cat}</p>
+                {pendingMissions.map(([cat], index) => (
+                  <div key={cat} className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-3xl text-white shadow-lg flex flex-col justify-between shrink-0 relative group">
+                    <div className="absolute top-4 right-4 bg-white/10 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                      #{index + 1}
+                    </div>
+                    <div className="mb-4 pr-10">
+                      <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">{translateCat(cat)}</p>
                       <p className="text-base font-bold leading-tight line-clamp-2">
-                        {t.coachTrigger.replace("{cat}", cat)}
+                        {t.coachTrigger.replace("{cat}", translateCat(cat))}
                       </p>
                     </div>
                     <button 
                       onClick={() => handleOpenCoachLesson(cat)}
-                      disabled={isGeneratingLesson}
-                      className="bg-white text-indigo-600 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-indigo-50 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
+                      disabled={loadingCategory !== null}
+                      className="bg-white text-indigo-600 py-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-indigo-50 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
                     >
-                      {isGeneratingLesson ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
+                      {loadingCategory === cat ? <Loader2 size={14} className="animate-spin" /> : <Lightbulb size={14} />}
                       {t.coachButton}
                     </button>
                     {!isPro && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute bottom-4 right-4">
                         <Lock size={12} className="text-white/40" />
                       </div>
                     )}
@@ -163,8 +181,8 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
               {Object.entries(stats.categories).slice(0, 5).map(([category, count]) => (
                 <div key={category}>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="font-bold text-slate-700">{category}</span>
-                    <span className="text-slate-400">{count} errors</span>
+                    <span className="font-bold text-slate-700">{translateCat(category)}</span>
+                    <span className="text-slate-400">{count} {t.errorsLabel}</span>
                   </div>
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-blue-500 h-full transition-all" style={{ width: `${(Number(count) / totalCorrectionsNum) * 100}%` }} />
@@ -176,7 +194,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
 
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <Clock size={20} className="text-blue-600" /> Recent Log
+              <Clock size={20} className="text-blue-600" /> {t.recentLog}
             </h3>
             <div className="space-y-3">
               {stats.history.slice(-5).reverse().map((m, idx) => (
@@ -221,9 +239,12 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
                 <div className="bg-indigo-100 p-2 rounded-lg text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
                   <Lightbulb size={16} />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
+                  <div className="flex justify-between items-start mb-0.5">
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{translateCat(lesson.category)}</p>
+                    <span className="text-[9px] font-black text-slate-300 uppercase shrink-0">{formatTimeAgo(lesson.timestamp)}</span>
+                  </div>
                   <h4 className="font-bold text-slate-800 text-[11px] sm:text-xs line-clamp-2 leading-snug group-hover:text-indigo-600">{lesson.title}</h4>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{lesson.category}</p>
                 </div>
               </button>
             ))
@@ -251,9 +272,9 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
                   <div className="bg-white/20 p-2 rounded-xl shrink-0">
                     <Sparkles size={24} />
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black line-clamp-2">{activeLesson.title}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black">{activeLesson.title}</h3>
                 </div>
-                <p className="text-white/80 font-bold uppercase tracking-widest text-[10px]">Topic: {activeLesson.category}</p>
+                <p className="text-white/80 font-bold uppercase tracking-widest text-[10px]">Topic: {translateCat(activeLesson.category)}</p>
               </div>
 
               <div className="p-8 space-y-8 overflow-y-auto flex-1">

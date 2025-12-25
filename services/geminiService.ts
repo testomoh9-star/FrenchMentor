@@ -1,8 +1,8 @@
 
-import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
+import { GoogleGenAI, Chat, Type } from "@google/genai";
 import { SupportLanguage, Message, MistakeRecord } from "../types";
 
-let aiInstance: GoogleGenAI | null = null;
+let aiInstance: null | GoogleGenAI = null;
 
 const getAI = () => {
   const apiKey = process.env.API_KEY;
@@ -105,7 +105,6 @@ export const sendMessageToGemini = async (message: string, language: SupportLang
 
 export const generateCoachLesson = async (category: string, history: MistakeRecord[], language: SupportLanguage): Promise<string> => {
   const ai = getAI();
-  // Filter for the EXACT category and take the most recent 3 to prevent mixing topics
   const filteredMistakes = history
     .filter(m => m.category === category)
     .slice(-3)
@@ -113,19 +112,18 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
     .join(", ");
   
   const prompt = `
-    You are an elite French coach. The user has a repetitive pattern of errors in the category: "${category}".
-    Mistakes to analyze: ${filteredMistakes}.
+    You are an elite French coach. The user has repetitive errors in the category: "${category}".
+    Mistakes: ${filteredMistakes}.
     
-    Generate a laser-focused report in ${language}. 
-    CRITICAL: The report must solve THIS specific pattern, not a general summary.
+    Generate a laser-focused report in ${language}.
+    
+    1. title: Use a SIMPLE, INDICATIVE title. (e.g., "Le verbe 'Aller' au passé", "Les prépositions 'Dans' et 'En'").
+    2. whyYouMadeIt: Brief insight.
+    3. theRule: A clear, simple rule in ${language}.
+    4. mentalTrick: A mnemonic.
+    5. conjugationTable: If a verb is central, provide present tense forms.
 
-    1. title: A very specific, distinct title (e.g., "The 'Vouloir' Trap" or "Mastering Plural Adjectives").
-    2. whyYouMadeIt: A psychological insight into the root cause of these specific mistakes.
-    3. theRule: A simple, actionable rule.
-    4. mentalTrick: A mnemonic or mental visualization to avoid this ever again.
-    5. conjugationTable: If a verb is the root of these errors, provide its present tense forms (je, tu, il_elle, nous, vous, ils_elles).
-
-    Output JSON ONLY.
+    Output JSON ONLY. All text content MUST be in ${language}.
   `;
 
   const response = await ai.models.generateContent({
@@ -144,7 +142,7 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
           mentalTrick: { type: Type.STRING },
           conjugationTable: { 
             type: Type.OBJECT, 
-            description: "Optional conjugation mapping for the specific verb problem.",
+            description: "Optional conjugation mapping.",
             properties: {
               je: { type: Type.STRING },
               tu: { type: Type.STRING },
@@ -161,6 +159,32 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
   });
 
   return response.text || "{}";
+};
+
+export const generateDeepDive = async (context: string, language: SupportLanguage): Promise<string> => {
+  const ai = getAI();
+  const prompt = `
+    Analyze this correction context: "${context}".
+    The user needs a "Deep Dive" structured lesson in ${language}.
+    
+    FORMAT RULES:
+    1. Start with a clear bold title.
+    2. Use a numbered list for key points.
+    3. Provide exactly 3 clear examples (French with English translation).
+    4. End with one "Actionable Tip".
+    5. Keep it structured and visually clean.
+    6. Language of lesson: ${language}.
+
+    Respond with the lesson content only.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: prompt,
+    config: { temperature: 0.1 }
+  });
+
+  return response.text || "Failed to generate lesson.";
 };
 
 // --- Audio / TTS Logic ---
@@ -192,7 +216,7 @@ export const playFrenchTTS = async (text: string): Promise<void> => {
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: text }] }],
     config: {
-      responseModalities: [Modality.AUDIO],
+      responseModalities: ['AUDIO'],
       speechConfig: {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
       },
@@ -202,11 +226,27 @@ export const playFrenchTTS = async (text: string): Promise<void> => {
   const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   if (!base64Audio) return;
 
-  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+  const WinAudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+  if (!WinAudioContext) return;
+  
+  let ctx: AudioContext;
+  try {
+    ctx = new WinAudioContext();
+  } catch (err) {
+    console.error("Failed to initialize AudioContext:", err);
+    return;
+  }
+
   const audioBuffer = await decodeAudioData(decode(base64Audio), ctx, 24000, 1);
   const source = ctx.createBufferSource();
   source.buffer = audioBuffer;
   source.connect(ctx.destination);
-  source.start();
-  return new Promise(resolve => { source.onended = () => resolve(); });
+  source.start(0);
+  
+  return new Promise(resolve => { 
+    source.onended = () => {
+      ctx.close().catch(() => {});
+      resolve();
+    };
+  });
 };

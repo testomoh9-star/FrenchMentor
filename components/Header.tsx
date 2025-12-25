@@ -58,10 +58,7 @@ const Header: React.FC<HeaderProps> = ({
           <Brain size={16} />
           <span className="hidden md:inline">{t.navBrain}</span>
           {hasNotifications && activeTab !== 'brain' && (
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-            </span>
+            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-slate-100 shadow-sm"></span>
           )}
         </button>
       </nav>
@@ -73,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="relative group">
-          <div className="flex items-center gap-1 bg-white px-2 py-1.5 rounded-lg border border-slate-200 cursor-pointer shadow-sm">
+          <div className="flex items-center gap-1 bg-white px-2 py-1.5 rounded-lg border border-slate-200 cursor-pointer shadow-sm hover:border-blue-300 transition-colors">
             <span className="text-[11px] sm:text-sm font-medium text-slate-700">{language.substring(0, 3)}</span>
             <ChevronDown size={10} className="text-slate-400" />
           </div>
