@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { BookOpen, Plus, History, Lightbulb, ChevronRight, Crown, Lock, UserCircle, MoreVertical, Trash2, Edit3, Check, PanelLeft, SquarePen, Menu } from 'lucide-react';
+import { BookOpen, History, Lightbulb, ChevronRight, Crown, Lock, UserCircle, MoreVertical, Trash2, Edit3, Check, PanelLeft, SquarePen, Menu } from 'lucide-react';
 import { SupportLanguage, UI_TRANSLATIONS, Conversation, CoachLesson } from '../types';
 
 interface SidebarProps {
@@ -49,6 +49,20 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [editingId]);
 
+  // Click away listener for the more menu
+  useEffect(() => {
+    const handleClickAway = (e: MouseEvent) => {
+      if (menuOpenId) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.chat-menu-container')) {
+          setMenuOpenId(null);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickAway);
+    return () => document.removeEventListener('mousedown', handleClickAway);
+  }, [menuOpenId]);
+
   const formatTimeAgo = (ts: number) => {
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
@@ -61,7 +75,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
-  const handleStartRename = (conv: Conversation) => {
+  const handleStartRename = (e: React.MouseEvent, conv: Conversation) => {
+    e.stopPropagation();
     setEditingId(conv.id);
     setRenamingValue(conv.title);
     setMenuOpenId(null);
@@ -74,7 +89,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     setEditingId(null);
   };
 
-  // Mobile drawer logic: if screen < 1024, it's an overlay
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
   return (
@@ -96,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         `}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
-        {/* THE RAIL: Minimal persistent strip */}
+        {/* THE RAIL */}
         <div className="w-16 flex flex-col items-center py-4 border-r border-slate-800/50 shrink-0">
           <button 
             onClick={onToggle}
@@ -129,14 +143,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* THE PANEL: Visible only when expanded */}
+        {/* THE PANEL */}
         <div className={`flex-1 flex flex-col min-w-0 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <div className="p-4 border-b border-white/5 flex items-center justify-between">
             <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">{t.recentChats}</span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-8 scrollbar-hide">
-            {/* Conversations List */}
             <section className="space-y-0.5">
               {conversations.length === 0 ? (
                 <div className="px-4 py-8 text-center">
@@ -144,7 +157,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               ) : (
                 conversations.slice().reverse().map((conv) => (
-                  <div key={conv.id} className="relative group">
+                  <div 
+                    key={conv.id} 
+                    className={`relative group ${menuOpenId === conv.id ? 'z-50' : 'z-10'}`}
+                  >
                     {editingId === conv.id ? (
                       <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-xl border border-blue-500/50">
                         <input
@@ -175,27 +191,27 @@ const Sidebar: React.FC<SidebarProps> = ({
                     )}
                     
                     {editingId !== conv.id && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 chat-menu-container">
                          <button 
                            onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === conv.id ? null : conv.id); }}
-                           className={`p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-all ${menuOpenId === conv.id ? 'text-white bg-white/10' : 'opacity-0 group-hover:opacity-100'}`}
+                           className={`p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-all ${menuOpenId === conv.id ? 'text-white bg-white/10 opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                          >
                            <MoreVertical size={14} />
                          </button>
                          
                          {menuOpenId === conv.id && (
-                           <div className="absolute right-full top-0 mr-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-1 z-[100] min-w-[120px] animate-in fade-in zoom-in-95 duration-100">
+                           <div className="absolute right-full top-0 mr-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150">
                               <button 
-                                onClick={() => handleStartRename(conv)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all"
+                                onClick={(e) => handleStartRename(e, conv)}
+                                className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all"
                               >
-                                <Edit3 size={12} /> Rename
+                                <Edit3 size={14} /> Rename
                               </button>
                               <button 
-                                onClick={() => { onDeleteChat(conv.id); setMenuOpenId(null); }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                               >
-                                <Trash2 size={12} /> Delete
+                                <Trash2 size={14} /> Delete
                               </button>
                            </div>
                          )}
@@ -206,7 +222,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
             </section>
 
-            {/* Knowledge Library */}
             <section className="space-y-1">
               <div className="px-4 py-2 flex items-center gap-2 text-white/30">
                 <BookOpen size={12} />
