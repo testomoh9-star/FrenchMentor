@@ -123,7 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="mt-auto flex flex-col gap-2 relative user-menu-container">
             {userMenuOpen && (
-              <div className={`absolute bottom-full mb-2 ${isRtl ? 'right-0' : 'left-0'} w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}>
+              <div className={`absolute bottom-full mb-2 left-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}>
                 <div className="flex items-center gap-3 p-3 mb-2 border-b border-slate-100 dark:border-slate-800">
                   <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black">JN</div>
                   <div className="min-w-0">
@@ -194,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     ) : (
                       <button 
                         onClick={() => onSelectChat(conv.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left pr-10 ${activeConversationId === conv.id ? 'bg-white/10 text-white shadow-lg' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${activeConversationId === conv.id ? 'bg-white/10 text-white shadow-lg' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
                       >
                         <div className="min-w-0 flex-1">
                           <h4 className="text-xs font-bold truncate tracking-tight">{conv.title}</h4>
@@ -204,12 +204,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                     )}
                     
                     {editingId !== conv.id && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 chat-menu-container">
+                      <div className={`absolute ${isRtl ? 'left-2' : 'right-2'} top-1/2 -translate-y-1/2 chat-menu-container`}>
                          <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === conv.id ? null : conv.id); }} className={`p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-all ${menuOpenId === conv.id ? 'text-white bg-white/10 opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                            <MoreVertical size={14} />
                          </button>
                          {menuOpenId === conv.id && (
-                           <div className="absolute right-full top-0 mr-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150">
+                           <div className={`absolute ${isRtl ? 'left-full ml-1' : 'right-full mr-1'} top-0 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150`}>
                               <button onClick={(e) => handleStartRename(e, conv)} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all">
                                 <Edit3 size={14} /> Rename
                               </button>
