@@ -8,14 +8,16 @@ interface InputAreaProps {
   isLoading: boolean;
   language: SupportLanguage;
   sparks: number;
+  isPro?: boolean;
 }
 
-const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, sparks }) => {
+const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, sparks, isPro }) => {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
-  const hasEnoughSparks = sparks >= 2;
+  const costPerMsg = isPro ? 1 : 2;
+  const hasEnoughSparks = sparks >= costPerMsg;
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -76,7 +78,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, spar
             </div>
             {hasEnoughSparks && (
               <span className="text-[8px] sm:text-[9px] font-bold opacity-80 flex items-center gap-0.5 mt-0.5 hidden sm:flex">
-                COST 2 <Zap size={8} fill="currentColor" />
+                COST {costPerMsg} <Zap size={8} fill="currentColor" />
               </span>
             )}
           </button>

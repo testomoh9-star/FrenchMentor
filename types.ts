@@ -48,6 +48,7 @@ export interface BrainStats {
   categories: Record<string, number>;
   history: MistakeRecord[];
   sparks: number;
+  lastRefillTimestamp: number;
   archivedLessons: CoachLesson[];
 }
 
@@ -112,7 +113,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "C'est un bon idée",
       "Je n'ai pas de l'argent",
       "Je cherche pour mon chat",
-      "Je suis fini avec mon travail",
+      "Je suis fini with my work",
       "Est-ce que tu peux m'aider avec ça?",
       "S'il vous plaît, parlez plus lentement"
     ]

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Message, CorrectionResponse, SupportLanguage, UI_TRANSLATIONS } from '../types';
-import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2, CheckCircle2, Lock, Crown, GraduationCap, Layout, Sparkles } from 'lucide-react';
+import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2, CheckCircle2, Lock, Crown, GraduationCap, Layout, Sparkles, Zap } from 'lucide-react';
 import { playFrenchTTS } from '../services/geminiService';
 
 interface MessageBubbleProps {
@@ -126,10 +126,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
                 <button 
                   onClick={() => onDeepDive?.(message.id, contextForDive)}
                   disabled={message.isDeepDiveLoading}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-[0.98] shadow-md disabled:opacity-50"
+                  className="w-full flex flex-col items-center justify-center gap-1 px-6 py-4 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-[0.98] shadow-md disabled:opacity-50 group"
                 >
-                  {message.isDeepDiveLoading ? <Loader2 size={16} className="animate-spin" /> : <GraduationCap size={16} className="text-indigo-400" />}
-                  {t.deepDiveBtn}
+                  <div className="flex items-center gap-2">
+                    {message.isDeepDiveLoading ? <Loader2 size={16} className="animate-spin" /> : <GraduationCap size={16} className="text-indigo-400" />}
+                    {t.deepDiveBtn}
+                  </div>
+                  <div className="text-[9px] font-black text-white/50 flex items-center gap-1">
+                    COST 10 <Zap size={8} fill="currentColor" />
+                  </div>
                 </button>
               )}
             </div>

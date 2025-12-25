@@ -20,6 +20,12 @@ const STORAGE_KEY_AI_LANG = 'french_mentor_ai_lang';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
 const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 
+const FREE_DAILY_MAX = 10;
+const PRO_MONTHLY_MAX = 1000;
+const FREE_COST_PER_MSG = 2;
+const PRO_COST_PER_MSG = 1;
+const DEEP_DIVE_COST = 10;
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
   const [showProModal, setShowProModal] = useState(false);
@@ -50,9 +56,9 @@ const App: React.FC = () => {
     const saved = localStorage.getItem(STORAGE_KEY_STATS);
     try { 
       const parsed = saved ? JSON.parse(saved) : null;
-      return parsed || { totalCorrections: 0, categories: {}, history: [], sparks: 10, archivedLessons: [] }; 
+      return parsed || { totalCorrections: 0, categories: {}, history: [], sparks: 10, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
     } catch (e) { 
-      return { totalCorrections: 0, categories: {}, history: [], sparks: 10, archivedLessons: [] }; 
+      return { totalCorrections: 0, categories: {}, history: [], sparks: 10, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
     }
   });
 
@@ -65,6 +71,57 @@ const App: React.FC = () => {
     if (!activeConvId) return [];
     return conversations.find(c => c.id === activeConvId)?.messages || [];
   }, [activeConvId, conversations]);
+
+  // Refill Logic Engine
+  useEffect(() => {
+    const now = Date.now();
+    const lastRefill = stats.lastRefillTimestamp || 0;
+    const msInDay = 24 * 60 * 60 * 1000;
+    const msInMonth = 30 * msInDay;
+
+    let shouldRefill = false;
+    let newSparkCount = stats.sparks;
+
+    if (isPro) {
+      // Pro Monthly Refill
+      if (now - lastRefill >= msInMonth) {
+        if (stats.sparks < PRO_MONTHLY_MAX) {
+          newSparkCount = PRO_MONTHLY_MAX;
+          shouldRefill = true;
+        }
+      } else if (stats.sparks < FREE_DAILY_MAX && lastRefill === 0) {
+          // Handle initial Pro migration case
+          newSparkCount = PRO_MONTHLY_MAX;
+          shouldRefill = true;
+      }
+    } else {
+      // Free Daily Refill
+      if (now - lastRefill >= msInDay) {
+        if (stats.sparks < FREE_DAILY_MAX) {
+          newSparkCount = FREE_DAILY_MAX;
+          shouldRefill = true;
+        }
+      }
+    }
+
+    if (shouldRefill) {
+      setStats(prev => ({
+        ...prev,
+        sparks: newSparkCount,
+        lastRefillTimestamp: now
+      }));
+    }
+  }, [isPro, stats.lastRefillTimestamp, stats.sparks]);
+
+  const handleUpgradeToPro = useCallback(() => {
+    setIsPro(true);
+    setStats(prev => ({
+      ...prev,
+      sparks: Math.max(prev.sparks, PRO_MONTHLY_MAX),
+      lastRefillTimestamp: Date.now()
+    }));
+    setShowProModal(false);
+  }, []);
 
   // Persist Languages
   useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
@@ -111,7 +168,9 @@ const App: React.FC = () => {
   }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
-    if (!isPro && stats.sparks < 2) {
+    const cost = isPro ? PRO_COST_PER_MSG : FREE_COST_PER_MSG;
+    
+    if (stats.sparks < cost) {
       setShowProModal(true);
       return;
     }
@@ -135,7 +194,8 @@ const App: React.FC = () => {
     setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, messages: [...c.messages, newUserMessage], timestamp: Date.now() } : c));
     setIsLoading(true);
 
-    if (!isPro) setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - 2) }));
+    // Deduct Sparks
+    setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - cost) }));
 
     try {
       const jsonResponse = await sendMessageToGemini(content, aiLang, currentMessages);
@@ -162,12 +222,12 @@ const App: React.FC = () => {
         });
       }
     } catch (error: any) {
-      if (error.message === "API_KEY_MISSING") setConfigError(t.apiKeyMissing);
+      if (error.message === "API_KEY_MISSING") setConfigError("API Key is missing or invalid.");
       else console.error(error);
     } finally {
       setIsLoading(false);
     }
-  }, [aiLang, currentMessages, activeConvId, conversations, stats.sparks, isPro, t]);
+  }, [aiLang, currentMessages, activeConvId, conversations, stats.sparks, isPro]);
 
   const handleDeepDive = useCallback(async (messageId: string, contextText: string) => {
     if (!isPro) {
@@ -175,10 +235,18 @@ const App: React.FC = () => {
       return;
     }
 
+    if (stats.sparks < DEEP_DIVE_COST) {
+       // Placeholder for "Not enough sparks" toast/alert
+       return;
+    }
+
     setConversations(prev => prev.map(conv => conv.id === activeConvId ? {
       ...conv,
       messages: conv.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: true } : m)
     } : conv));
+
+    // Deduct Sparks for Pro Deep Dive
+    setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - DEEP_DIVE_COST) }));
 
     try {
       const deepDiveContent = await generateDeepDive(contextText, aiLang);
@@ -200,7 +268,7 @@ const App: React.FC = () => {
         messages: conv.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: false } : m)
       } : conv));
     }
-  }, [activeConvId, aiLang, isPro]);
+  }, [activeConvId, aiLang, isPro, stats.sparks]);
 
   const handleArchiveLesson = useCallback((lesson: CoachLesson) => {
     setStats(prev => {
@@ -259,7 +327,7 @@ const App: React.FC = () => {
       <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
         <Header 
           language={systemLang} 
-          sparks={isPro ? 999 : stats.sparks}
+          sparks={stats.sparks}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           isPro={isPro}
@@ -315,12 +383,18 @@ const App: React.FC = () => {
 
         {activeTab === 'practice' && (
           <footer className="shrink-0">
-            <InputArea onSend={handleSendMessage} isLoading={isLoading} language={systemLang} sparks={isPro ? 999 : stats.sparks} />
+            <InputArea 
+                onSend={handleSendMessage} 
+                isLoading={isLoading} 
+                language={systemLang} 
+                sparks={stats.sparks}
+                isPro={isPro}
+            />
           </footer>
         )}
       </div>
 
-      {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={() => { setIsPro(true); setShowProModal(false); }} />}
+      {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={handleUpgradeToPro} />}
       
       {showSettingsModal && (
         <SettingsModal 

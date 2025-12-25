@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Languages, Zap, MessageSquare, Brain, Crown, Menu, PanelLeft } from 'lucide-react';
+import { Languages, Zap, MessageSquare, Brain, Crown, Menu, PanelLeft, Plus } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS } from '../types';
 
 interface HeaderProps {
@@ -77,9 +77,16 @@ const Header: React.FC<HeaderProps> = ({
       </nav>
 
       <div className={`flex items-center gap-1.5 sm:gap-3 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
-        <div className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-full border shadow-sm ${isPro ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
-          <Zap size={12} fill="currentColor" />
-          <span className="text-[11px] sm:text-sm font-black">{isPro ? '∞' : sparks}</span>
+        <div className="relative group">
+           <div className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-full border shadow-sm transition-all ${isPro ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
+              <Zap size={12} fill="currentColor" />
+              <span className="text-[11px] sm:text-sm font-black">{sparks}</span>
+           </div>
+           
+           {/* Buy more placeholder icon */}
+           <button className="absolute -top-2 -right-1 bg-white border border-slate-200 rounded-full p-0.5 text-slate-400 hover:text-blue-600 hover:border-blue-200 shadow-sm transition-all active:scale-90">
+             <Plus size={10} strokeWidth={3} />
+           </button>
         </div>
       </div>
     </header>
