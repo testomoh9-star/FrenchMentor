@@ -264,6 +264,8 @@ const App: React.FC = () => {
           setActiveTab={setActiveTab}
           isPro={isPro}
           hasNotifications={isPro && pendingMissionsCount > 0}
+          isSidebarExpanded={isSidebarExpanded}
+          onToggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)}
         />
 
         <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth flex flex-col relative">

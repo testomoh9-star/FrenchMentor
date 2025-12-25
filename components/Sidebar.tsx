@@ -279,12 +279,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
       </aside>
-
-      {isMobile && !isExpanded && (
-        <button onClick={onToggle} className="fixed top-4 left-4 z-[100] p-3 bg-white shadow-xl rounded-xl text-slate-600 active:scale-95">
-          <Menu size={20} />
-        </button>
-      )}
     </>
   );
 };
