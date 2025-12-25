@@ -1,16 +1,23 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MessageSquarePlus } from 'lucide-react';
-import { SupportLanguage, UI_TRANSLATIONS } from '../types';
+import { SystemLanguage, UI_TRANSLATIONS } from '../types';
 
 interface EmptyStateProps {
   onSuggestionClick: (text: string) => void;
-  language: SupportLanguage;
+  language: SystemLanguage;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ onSuggestionClick, language }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
+
+  // Randomly select 4 suggestions from the pool of 12
+  const selectedSuggestions = useMemo(() => {
+    const pool = [...t.suggestions];
+    const shuffled = pool.sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 4);
+  }, [language]); // Re-roll when language changes
 
   return (
     <div className={`flex flex-col items-center justify-center text-center px-4 sm:px-6 py-6 ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
@@ -23,7 +30,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onSuggestionClick, language }) 
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
-        {t.suggestions.map((suggestion, idx) => (
+        {selectedSuggestions.map((suggestion, idx) => (
           <button
             key={idx}
             onClick={() => onSuggestionClick(suggestion)}

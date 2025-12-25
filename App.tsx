@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Message, SupportLanguage, SystemLanguage, AppTheme, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation } from './types';
+import { Message, SupportLanguage, SystemLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation } from './types';
 import { sendMessageToGemini, resetChatSession, generateDeepDive } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -17,7 +17,6 @@ const STORAGE_KEY_CONVS = 'french_mentor_conversations';
 const STORAGE_KEY_CUR_CONV = 'french_mentor_cur_conv';
 const STORAGE_KEY_SYSTEM_LANG = 'french_mentor_system_lang';
 const STORAGE_KEY_AI_LANG = 'french_mentor_ai_lang';
-const STORAGE_KEY_THEME = 'french_mentor_theme';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
 const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 
@@ -47,10 +46,6 @@ const App: React.FC = () => {
     return (localStorage.getItem(STORAGE_KEY_AI_LANG) as SupportLanguage) || 'French';
   });
 
-  const [theme, setTheme] = useState<AppTheme>(() => {
-    return (localStorage.getItem(STORAGE_KEY_THEME) as AppTheme) || 'light';
-  });
-
   const [stats, setStats] = useState<BrainStats>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_STATS);
     try { 
@@ -70,18 +65,6 @@ const App: React.FC = () => {
     if (!activeConvId) return [];
     return conversations.find(c => c.id === activeConvId)?.messages || [];
   }, [activeConvId, conversations]);
-
-  // Apply Theme
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.body.classList.replace('bg-slate-50', 'bg-slate-950');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.replace('bg-slate-950', 'bg-slate-50');
-    }
-    localStorage.setItem(STORAGE_KEY_THEME, theme);
-  }, [theme]);
 
   // Persist Languages
   useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
@@ -229,15 +212,6 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const handleReset = useCallback(() => {
-    if (window.confirm(t.resetConfirm)) {
-      setConversations([]);
-      setActiveConvId(null);
-      setStats(prev => ({ ...prev, totalCorrections: 0, categories: {}, history: [], sparks: isPro ? 999 : 10, archivedLessons: [] }));
-      resetChatSession();
-    }
-  }, [t, isPro]);
-
   const pendingMissionsCount = useMemo(() => {
     let count = 0;
     Object.entries(stats.categories).forEach(([cat, errCount]) => {
@@ -262,7 +236,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-full transition-colors duration-300 relative font-sans ${isRtl ? 'font-arabic' : ''} ${theme === 'dark' ? 'dark bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex h-full relative font-sans ${isRtl ? 'font-arabic' : ''} bg-slate-50 text-slate-900`}>
       <Sidebar 
         language={systemLang}
         conversations={conversations}
@@ -284,7 +258,6 @@ const App: React.FC = () => {
 
       <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
         <Header 
-          onReset={handleReset} 
           language={systemLang} 
           sparks={isPro ? 999 : stats.sparks}
           activeTab={activeTab}
@@ -317,9 +290,9 @@ const App: React.FC = () => {
                   ))}
                   {isLoading && (
                     <div className={`flex justify-center w-full my-4 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-6 py-4 rounded-full shadow-md border border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                      <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-full shadow-md border border-slate-100 flex items-center gap-3">
                         <Loader2 className="animate-spin text-blue-600" size={18} />
-                        <span className="text-slate-600 dark:text-slate-300 font-bold text-sm">{t.analyzing}</span>
+                        <span className="text-slate-600 font-bold text-sm">{t.analyzing}</span>
                       </div>
                     </div>
                   )}
@@ -351,11 +324,9 @@ const App: React.FC = () => {
         <SettingsModal 
           language={systemLang}
           aiLang={aiLang}
-          theme={theme}
           onClose={() => setShowSettingsModal(false)}
           onSetSystemLang={setSystemLang}
           onSetAiLang={setAiLang}
-          onSetTheme={setTheme}
         />
       )}
 

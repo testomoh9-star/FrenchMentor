@@ -1,7 +1,6 @@
 
 export type SupportLanguage = 'English' | 'French' | 'Arabic';
 export type SystemLanguage = 'English' | 'French' | 'Arabic' | 'Spanish';
-export type AppTheme = 'light' | 'dark';
 
 export interface CorrectionItem {
   original: string;
@@ -70,8 +69,8 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     deepDiveBtn: "Structural Dive",
     deepDiveTitle: "Grammar Analysis",
     subtitle: "Bonjour ! Ready to learn?",
-    description: "Type a phrase in French to get corrections, or type in English to get a translation.",
-    placeholder: "Write a sentence in French (or English)...",
+    description: "Type a phrase in French to get corrections, or type in another language to get a translation.",
+    placeholder: "Write a sentence in French (or another language)...",
     button: "Improve",
     notesLabel: "Tutor's Notes",
     lookingGood: "Looking Good!",
@@ -95,9 +94,6 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "Log out",
     aiExplainLang: "AI Explains in...",
     systemLang: "System Language",
-    theme: "Theme",
-    themeLight: "Bright",
-    themeDark: "Dark",
     catMap: {
       Grammar: "Grammar",
       Conjugation: "Conjugation",
@@ -110,7 +106,15 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "Je suis très contente de te voir",
       "How do you say 'I need to book a table' in French?",
       "J'ai aller au cinema hier",
-      "Il faut que je vais partir maintenant"
+      "Il faut que je vais partir maintenant",
+      "Je visitais ma grand-mère la semaine dernière",
+      "Merci pour le aide",
+      "C'est un bon idée",
+      "Je n'ai pas de l'argent",
+      "Je cherche pour mon chat",
+      "Je suis fini avec mon travail",
+      "Est-ce que tu peux m'aider avec ça?",
+      "S'il vous plaît, parlez plus lentement"
     ]
   },
   French: {
@@ -121,8 +125,8 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     deepDiveBtn: "Analyse Profonde",
     deepDiveTitle: "Analyse Structurelle",
     subtitle: "Bonjour ! Prêt à apprendre ?",
-    description: "Tapez une phrase en français pour obtenir des corrections, ou en anglais pour une traduction.",
-    placeholder: "Écrivez une phrase en français (ou anglais)...",
+    description: "Tapez une phrase en français pour obtenir des corrections, ou dans une autre langue pour une traduction.",
+    placeholder: "Écrivez une phrase en français (ou une autre langue)...",
     button: "Améliorer",
     notesLabel: "Notes du Tuteur",
     lookingGood: "Très bien !",
@@ -146,9 +150,6 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "Se déconnecter",
     aiExplainLang: "L'IA explique en...",
     systemLang: "Langue du système",
-    theme: "Thème",
-    themeLight: "Clair",
-    themeDark: "Sombre",
     catMap: {
       Grammar: "Grammaire",
       Conjugation: "Conjugaison",
@@ -161,7 +162,15 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "Je suis très contente de te voir",
       "Comment dit-on 'I need to book a table' en français ?",
       "J'ai aller au cinema hier",
-      "Il faut que je vais partir maintenant"
+      "Il faut que je vais partir maintenant",
+      "Je visitais ma grand-mère la semaine dernière",
+      "Merci pour le aide",
+      "C'est un bon idée",
+      "Je n'ai pas de l'argent",
+      "Je cherche pour mon chat",
+      "Je suis fini avec mon travail",
+      "Est-ce que tu peux m'aider avec ça?",
+      "S'il vous plaît, parlez plus lentement"
     ]
   },
   Arabic: {
@@ -172,8 +181,8 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     deepDiveBtn: "تعمق",
     deepDiveTitle: "تحليل هيكلي",
     subtitle: "مرحباً! هل أنت مستعد للتعلم؟",
-    description: "اكتب جملة بالفرنسية للحصول على تصحيحات، أو بالإنجليزية للحصول على ترجمة.",
-    placeholder: "اكتب جملة بالفرنسية (أو الإنجليزية)...",
+    description: "اكتب جملة بالفرنسية للحصول على تصحيحات، أو بلغة أخرى للحصول على ترجمة.",
+    placeholder: "اكتب جملة بالفرنسية (أو بلغة أخرى)...",
     button: "تحسين",
     notesLabel: "ملاحظات المعلم",
     lookingGood: "تبدو جيدة!",
@@ -197,9 +206,6 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "تسجيل الخروج",
     aiExplainLang: "الذكاء الاصطناعي يشرح بـ...",
     systemLang: "لغة النظام",
-    theme: "المظهر",
-    themeLight: "فاتح",
-    themeDark: "داكن",
     catMap: {
       Grammar: "قواعد",
       Conjugation: "تصريف الأفعال",
@@ -212,7 +218,15 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "Je suis très contente de te voir",
       "كيف أقول 'أحتاج لحجز طاولة' بالفرنسية؟",
       "J'ai aller au cinema hier",
-      "Il faut que je vais partir maintenant"
+      "Il faut que je vais partir maintenant",
+      "Je visitais ma grand-mère la semaine dernière",
+      "Merci pour le aide",
+      "C'est un bon idée",
+      "Je n'ai pas de l'argent",
+      "Je cherche pour mon chat",
+      "Je suis fini avec mon travail",
+      "Est-ce que tu peux m'aider avec ça?",
+      "S'il vous plaît, parlez plus lentement"
     ]
   },
   Spanish: {
@@ -223,8 +237,8 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     deepDiveBtn: "Análisis Profundo",
     deepDiveTitle: "Análisis de Gramática",
     subtitle: "¡Bonjour! ¿Listo para aprender?",
-    description: "Escribe una frase en francés para recibir correcciones, o en inglés para una traducción.",
-    placeholder: "Escribe una frase en francés (o inglés)...",
+    description: "Escribe una frase en francés para recibir correcciones, o en otro idioma para una traducción.",
+    placeholder: "Escribe una frase en francés (u otro idioma)...",
     button: "Mejorar",
     notesLabel: "Notas del Tutor",
     lookingGood: "¡Se ve bien!",
@@ -248,22 +262,27 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "Cerrar sesión",
     aiExplainLang: "La IA explica en...",
     systemLang: "Idioma del sistema",
-    theme: "Tema",
-    themeLight: "Claro",
-    themeDark: "Oscuro",
     catMap: {
       Grammar: "Gramática",
-      Conjugation: "Conjugación",
-      Vocabulary: "Vocabulario",
-      Orthographe: "Ortografía",
-      Prepositions: "Preposiciones",
-      Gender: "Género"
+      Conjugación: "Conjugación",
+      Vocabulario: "Vocabulario",
+      Ortografía: "Ortografía",
+      Preposiciones: "Preposiciones",
+      Género: "Género"
     },
     suggestions: [
       "Je suis très contente de te voir",
       "¿Cómo se dice 'I need to book a table' en francés?",
       "J'ai aller au cinema hier",
-      "Il faut que je vais partir maintenant"
+      "Il faut que je vais partir ahora",
+      "Je visitais ma grand-mère la semaine dernière",
+      "Merci pour le aide",
+      "C'est un bon idée",
+      "Je n'ai pas de l'argent",
+      "Je cherche pour mon chat",
+      "Je suis fini avec mon travail",
+      "Est-ce que tu peux m'aider avec ça?",
+      "S'il vous plaît, parlez más lentamente"
     ]
   }
 };
