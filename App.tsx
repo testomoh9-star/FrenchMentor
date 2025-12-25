@@ -9,7 +9,7 @@ import EmptyState from './components/EmptyState';
 import BrainDashboard from './components/BrainDashboard';
 import ProModal from './components/ProModal';
 import Sidebar from './components/Sidebar';
-import { Loader2, AlertTriangle, PanelLeft } from 'lucide-react';
+import { Loader2, AlertTriangle, PanelLeft, PanelLeftClose } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'french_mentor_conversations';
 const STORAGE_KEY_CUR_CONV = 'french_mentor_cur_conv';
@@ -71,12 +71,33 @@ const App: React.FC = () => {
   useEffect(() => { if(activeConvId) localStorage.setItem(STORAGE_KEY_CUR_CONV, activeConvId); }, [activeConvId]);
 
   const handleNewChat = useCallback(() => {
+    // Prevent duplicate empty chats
+    const activeConv = conversations.find(c => c.id === activeConvId);
+    if (activeConv && activeConv.messages.length === 0) {
+      setActiveTab('practice');
+      return; 
+    }
+
     const id = Date.now().toString();
-    const newConv: Conversation = { id, title: "New Discussion", messages: [], timestamp: Date.now() };
+    const newConv: Conversation = { id, title: t.newChat, messages: [], timestamp: Date.now() };
     setConversations(prev => [...prev, newConv]);
     setActiveConvId(id);
     setActiveTab('practice');
     resetChatSession();
+  }, [conversations, activeConvId, t.newChat]);
+
+  const handleDeleteChat = useCallback((id: string) => {
+    setConversations(prev => {
+      const filtered = prev.filter(c => c.id !== id);
+      if (activeConvId === id) {
+        setActiveConvId(filtered.length > 0 ? filtered[filtered.length - 1].id : null);
+      }
+      return filtered;
+    });
+  }, [activeConvId]);
+
+  const handleRenameChat = useCallback((id: string, newTitle: string) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
   }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
@@ -86,11 +107,19 @@ const App: React.FC = () => {
     }
 
     let targetConvId = activeConvId;
-    if (!targetConvId) {
-      targetConvId = Date.now().toString();
-      const newConv: Conversation = { id: targetConvId, title: content.slice(0, 30) + "...", messages: [], timestamp: Date.now() };
-      setConversations(prev => [...prev, newConv]);
-      setActiveConvId(targetConvId);
+    const currentConv = conversations.find(c => c.id === activeConvId);
+    
+    // If no active conv or if active conv is empty, we start fresh
+    if (!targetConvId || (currentConv && currentConv.messages.length === 0)) {
+        if (!targetConvId) {
+            targetConvId = Date.now().toString();
+            const newConv: Conversation = { id: targetConvId, title: content.slice(0, 30) + "...", messages: [], timestamp: Date.now() };
+            setConversations(prev => [...prev, newConv]);
+            setActiveConvId(targetConvId);
+        } else {
+            // Update existing empty conv title
+            setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, title: content.slice(0, 30) + "..." } : c));
+        }
     }
 
     const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
@@ -108,8 +137,7 @@ const App: React.FC = () => {
       
       setConversations(prev => prev.map(c => {
         if (c.id === targetConvId) {
-          const updatedTitle = c.messages.length === 1 ? content.slice(0, 30) + "..." : c.title;
-          return { ...c, title: updatedTitle, messages: [...c.messages, newAiMessage] };
+          return { ...c, messages: [...c.messages, newAiMessage] };
         }
         return c;
       }));
@@ -131,7 +159,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [language, currentMessages, activeConvId, stats.sparks, isPro, t]);
+  }, [language, currentMessages, activeConvId, conversations, stats.sparks, isPro, t]);
 
   const handleDeepDive = useCallback(async (messageId: string, contextText: string) => {
     if (!isPro) {
@@ -205,18 +233,24 @@ const App: React.FC = () => {
   return (
     <div className={`flex h-full bg-slate-50 relative font-sans ${isRtl ? 'font-arabic' : ''}`}>
       {showSidebar && (
-        <Sidebar 
-          language={language}
-          conversations={conversations}
-          activeConversationId={activeConvId}
-          onNewChat={handleNewChat}
-          onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); }}
-          archivedLessons={stats.archivedLessons}
-          onSelectLesson={(lesson) => { /* Logic to open modal if needed */ }}
-          isPro={isPro}
-          onUpgradeClick={() => setShowProModal(true)}
-          translateCat={(cat) => t.catMap[cat as keyof typeof t.catMap] || cat}
-        />
+        <div className="fixed inset-0 lg:relative z-[70] flex">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm lg:hidden" onClick={() => setShowSidebar(false)} />
+          <Sidebar 
+            language={language}
+            conversations={conversations}
+            activeConversationId={activeConvId}
+            onNewChat={handleNewChat}
+            onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); if(window.innerWidth < 1024) setShowSidebar(false); }}
+            onDeleteChat={handleDeleteChat}
+            onRenameChat={handleRenameChat}
+            archivedLessons={stats.archivedLessons}
+            onSelectLesson={(lesson) => { /* Logic to open modal if needed */ }}
+            isPro={isPro}
+            onUpgradeClick={() => setShowProModal(true)}
+            onClose={() => setShowSidebar(false)}
+            translateCat={(cat) => (t.catMap as any)[cat] || cat}
+          />
+        </div>
       )}
 
       <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden">
@@ -229,15 +263,18 @@ const App: React.FC = () => {
           setActiveTab={setActiveTab}
           isPro={isPro}
           hasNotifications={isPro && pendingMissionsCount > 0}
+          toggleSidebar={() => setShowSidebar(!showSidebar)}
         />
 
         <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth flex flex-col relative">
-          <button 
-            onClick={() => setShowSidebar(!showSidebar)} 
-            className="absolute top-4 left-4 z-40 p-2 bg-white rounded-lg border shadow-sm hover:bg-slate-50 lg:hidden"
-          >
-            <PanelLeft size={18} />
-          </button>
+          {!showSidebar && (
+            <button 
+              onClick={() => setShowSidebar(true)} 
+              className="absolute top-4 left-4 z-40 p-2.5 bg-white rounded-xl border border-slate-200 shadow-sm hover:bg-slate-50 transition-all text-slate-600 active:scale-95"
+            >
+              <PanelLeft size={20} />
+            </button>
+          )}
 
           {activeTab === 'practice' ? (
             <div className="max-w-4xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-8 flex-1 flex flex-col">
