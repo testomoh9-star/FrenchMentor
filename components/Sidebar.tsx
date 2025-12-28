@@ -11,6 +11,7 @@ interface SidebarProps {
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
   onRenameChat: (id: string, newTitle: string) => void;
+  onDeleteAllChats: () => void;
   archivedLessons: CoachLesson[];
   onSelectLesson: (lesson: CoachLesson) => void;
   isPro: boolean;
@@ -30,6 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectChat,
   onDeleteChat,
   onRenameChat,
+  onDeleteAllChats,
   archivedLessons,
   onSelectLesson,
   isPro,
@@ -172,56 +174,66 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <p className="text-[10px] text-white/20 italic">No recent chats</p>
                 </div>
               ) : (
-                conversations.slice().reverse().map((conv) => (
-                  <div key={conv.id} className={`relative group ${menuOpenId === conv.id ? 'z-50' : 'z-10'}`}>
-                    {editingId === conv.id ? (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-xl border border-blue-500/50">
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={renamingValue}
-                          onChange={(e) => setRenamingValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleConfirmRename(conv.id);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          className="flex-1 bg-transparent text-white text-xs font-bold outline-none min-w-0"
-                        />
-                        <button onClick={() => handleConfirmRename(conv.id)} className="text-green-400 p-1 hover:bg-white/10 rounded-md">
-                          <Check size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => onSelectChat(conv.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${activeConversationId === conv.id ? 'bg-white/10 text-white shadow-lg' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold truncate tracking-tight">{conv.title}</h4>
-                          <span className="text-[9px] uppercase font-black opacity-30 mt-0.5 block">{formatTimeAgo(conv.timestamp)}</span>
+                <>
+                  {conversations.slice().reverse().map((conv) => (
+                    <div key={conv.id} className={`relative group ${menuOpenId === conv.id ? 'z-50' : 'z-10'}`}>
+                      {editingId === conv.id ? (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-xl border border-blue-500/50">
+                          <input
+                            ref={editInputRef}
+                            type="text"
+                            value={renamingValue}
+                            onChange={(e) => setRenamingValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleConfirmRename(conv.id);
+                              if (e.key === 'Escape') setEditingId(null);
+                            }}
+                            className="flex-1 bg-transparent text-white text-xs font-bold outline-none min-w-0"
+                          />
+                          <button onClick={() => handleConfirmRename(conv.id)} className="text-green-400 p-1 hover:bg-white/10 rounded-md">
+                            <Check size={14} />
+                          </button>
                         </div>
-                      </button>
-                    )}
-                    
-                    {editingId !== conv.id && (
-                      <div className={`absolute ${isRtl ? 'left-2' : 'right-2'} top-1/2 -translate-y-1/2 chat-menu-container`}>
-                         <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === conv.id ? null : conv.id); }} className={`p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-all ${menuOpenId === conv.id ? 'text-white bg-white/10 opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                           <MoreVertical size={14} />
-                         </button>
-                         {menuOpenId === conv.id && (
-                           <div className={`absolute ${isRtl ? 'left-full ml-1' : 'right-full mr-1'} top-0 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150`}>
-                              <button onClick={(e) => handleStartRename(e, conv)} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all">
-                                <Edit3 size={14} /> Rename
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-                                <Trash2 size={14} /> Delete
-                              </button>
-                           </div>
-                         )}
-                      </div>
-                    )}
+                      ) : (
+                        <button 
+                          onClick={() => onSelectChat(conv.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${activeConversationId === conv.id ? 'bg-white/10 text-white shadow-lg' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-bold truncate tracking-tight">{conv.title}</h4>
+                            <span className="text-[9px] uppercase font-black opacity-30 mt-0.5 block">{formatTimeAgo(conv.timestamp)}</span>
+                          </div>
+                        </button>
+                      )}
+                      
+                      {editingId !== conv.id && (
+                        <div className={`absolute ${isRtl ? 'left-2' : 'right-2'} top-1/2 -translate-y-1/2 chat-menu-container`}>
+                          <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === conv.id ? null : conv.id); }} className={`p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-all ${menuOpenId === conv.id ? 'text-white bg-white/10 opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            <MoreVertical size={14} />
+                          </button>
+                          {menuOpenId === conv.id && (
+                            <div className={`absolute ${isRtl ? 'left-full ml-1' : 'right-full mr-1'} top-0 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150`}>
+                                <button onClick={(e) => handleStartRename(e, conv)} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all">
+                                  <Edit3 size={14} /> Rename
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+                                  <Trash2 size={14} /> Delete
+                                </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div className="px-2 pt-2">
+                    <button 
+                      onClick={onDeleteAllChats}
+                      className="w-full py-2 px-4 rounded-full bg-red-500/10 text-[#df3d31] hover:bg-red-500/20 text-[11px] font-bold transition-all text-center"
+                    >
+                      {t.deleteAll}
+                    </button>
                   </div>
-                ))
+                </>
               )}
             </section>
 

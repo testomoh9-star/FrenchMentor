@@ -1,18 +1,20 @@
 
 import React from 'react';
-import { X, Globe, MessageSquare } from 'lucide-react';
+import { X, Globe, MessageSquare, Languages } from 'lucide-react';
 import { SystemLanguage, SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface SettingsModalProps {
   language: SystemLanguage;
   aiLang: SupportLanguage;
+  translationLang: SupportLanguage;
   onClose: () => void;
   onSetSystemLang: (lang: SystemLanguage) => void;
   onSetAiLang: (lang: SupportLanguage) => void;
+  onSetTranslationLang: (lang: SupportLanguage) => void;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
-  language, aiLang, onClose, onSetSystemLang, onSetAiLang
+  language, aiLang, translationLang, onClose, onSetSystemLang, onSetAiLang, onSetTranslationLang
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
@@ -27,7 +29,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto scrollbar-hide">
           {/* AI Explanation Language */}
           <section>
             <div className="flex items-center gap-2 mb-4">
@@ -39,12 +41,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   key={lang}
                   onClick={() => onSetAiLang(lang)}
-                  className={`py-3 rounded-xl text-xs font-bold border transition-all ${aiLang === lang ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200'}`}
+                  className={`py-3 rounded-xl text-xs font-bold border transition-all ${aiLang === lang ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200'}`}
                 >
                   {lang}
                 </button>
               ))}
             </div>
+          </section>
+
+          {/* Translation Language */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Languages size={16} className="text-green-500" />
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Translation Language</label>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(['French', 'English', 'Arabic'] as SupportLanguage[]).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => onSetTranslationLang(lang)}
+                  className={`py-3 rounded-xl text-xs font-bold border transition-all ${translationLang === lang ? 'bg-green-600 border-green-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-green-200'}`}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2 italic">Language for the small translation/alternative under corrections.</p>
           </section>
 
           {/* System UI Language */}
@@ -58,7 +80,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   key={lang}
                   onClick={() => onSetSystemLang(lang)}
-                  className={`py-3 rounded-xl text-xs font-bold border transition-all ${language === lang ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200'}`}
+                  className={`py-3 rounded-xl text-xs font-bold border transition-all ${language === lang ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200'}`}
                 >
                   {lang}
                 </button>
@@ -67,10 +89,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </section>
         </div>
 
-        <div className="p-6 bg-slate-50">
+        <div className="p-6 bg-slate-50 border-t border-slate-100">
           <button 
             onClick={onClose}
-            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all"
+            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg shadow-slate-200"
           >
             {isRtl ? 'حفظ' : 'Save Changes'}
           </button>

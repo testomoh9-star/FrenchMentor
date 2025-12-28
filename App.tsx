@@ -17,6 +17,7 @@ const STORAGE_KEY_CONVS = 'french_mentor_conversations';
 const STORAGE_KEY_CUR_CONV = 'french_mentor_cur_conv';
 const STORAGE_KEY_SYSTEM_LANG = 'french_mentor_system_lang';
 const STORAGE_KEY_AI_LANG = 'french_mentor_ai_lang';
+const STORAGE_KEY_TRANS_LANG = 'french_mentor_trans_lang';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
 const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 
@@ -31,6 +32,7 @@ const App: React.FC = () => {
   const [showProModal, setShowProModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [isPro, setIsPro] = useState<boolean>(() => localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true');
   const [configError, setConfigError] = useState<string | null>(null);
@@ -49,7 +51,11 @@ const App: React.FC = () => {
   });
 
   const [aiLang, setAiLang] = useState<SupportLanguage>(() => {
-    return (localStorage.getItem(STORAGE_KEY_AI_LANG) as SupportLanguage) || 'French';
+    return (localStorage.getItem(STORAGE_KEY_AI_LANG) as SupportLanguage) || 'English';
+  });
+
+  const [translationLang, setTranslationLang] = useState<SupportLanguage>(() => {
+    return (localStorage.getItem(STORAGE_KEY_TRANS_LANG) as SupportLanguage) || 'English';
   });
 
   const [stats, setStats] = useState<BrainStats>(() => {
@@ -83,19 +89,16 @@ const App: React.FC = () => {
     let newSparkCount = stats.sparks;
 
     if (isPro) {
-      // Pro Monthly Refill
       if (now - lastRefill >= msInMonth) {
         if (stats.sparks < PRO_MONTHLY_MAX) {
           newSparkCount = PRO_MONTHLY_MAX;
           shouldRefill = true;
         }
       } else if (stats.sparks < FREE_DAILY_MAX && lastRefill === 0) {
-          // Handle initial Pro migration case
           newSparkCount = PRO_MONTHLY_MAX;
           shouldRefill = true;
       }
     } else {
-      // Free Daily Refill
       if (now - lastRefill >= msInDay) {
         if (stats.sparks < FREE_DAILY_MAX) {
           newSparkCount = FREE_DAILY_MAX;
@@ -105,11 +108,7 @@ const App: React.FC = () => {
     }
 
     if (shouldRefill) {
-      setStats(prev => ({
-        ...prev,
-        sparks: newSparkCount,
-        lastRefillTimestamp: now
-      }));
+      setStats(prev => ({ ...prev, sparks: newSparkCount, lastRefillTimestamp: now }));
     }
   }, [isPro, stats.lastRefillTimestamp, stats.sparks]);
 
@@ -126,6 +125,7 @@ const App: React.FC = () => {
   // Persist Languages
   useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
   useEffect(() => { localStorage.setItem(STORAGE_KEY_AI_LANG, aiLang); }, [aiLang]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEY_TRANS_LANG, translationLang); }, [translationLang]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CONVS, JSON.stringify(conversations));
@@ -144,7 +144,6 @@ const App: React.FC = () => {
       setActiveTab('practice');
       return; 
     }
-
     const id = Date.now().toString();
     const newConv: Conversation = { id, title: t.newChat, messages: [], timestamp: Date.now() };
     setConversations(prev => [...prev, newConv]);
@@ -167,9 +166,17 @@ const App: React.FC = () => {
     setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
   }, []);
 
+  const handleDeleteAllChats = useCallback(() => {
+    setConversations([]);
+    setActiveConvId(null);
+    localStorage.removeItem(STORAGE_KEY_CONVS);
+    localStorage.removeItem(STORAGE_KEY_CUR_CONV);
+    resetChatSession();
+    setShowDeleteAllConfirm(false);
+  }, []);
+
   const handleSendMessage = useCallback(async (content: string) => {
     const cost = isPro ? PRO_COST_PER_MSG : FREE_COST_PER_MSG;
-    
     if (stats.sparks < cost) {
       setShowProModal(true);
       return;
@@ -190,26 +197,20 @@ const App: React.FC = () => {
     }
 
     const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
-    
     setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, messages: [...c.messages, newUserMessage], timestamp: Date.now() } : c));
     setIsLoading(true);
-
-    // Deduct Sparks
     setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - cost) }));
 
     try {
-      const jsonResponse = await sendMessageToGemini(content, aiLang, currentMessages);
-      const data: CorrectionResponse = JSON.parse(jsonResponse);
-      
+      const jsonResponse = await sendMessageToGemini(content, aiLang, translationLang, currentMessages);
       const newAiMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', content: jsonResponse, timestamp: Date.now() };
       
       setConversations(prev => prev.map(c => {
-        if (c.id === targetConvId) {
-          return { ...c, messages: [...c.messages, newAiMessage] };
-        }
+        if (c.id === targetConvId) return { ...c, messages: [...c.messages, newAiMessage] };
         return c;
       }));
 
+      const data: CorrectionResponse = JSON.parse(jsonResponse);
       if (data.corrections && data.corrections.length > 0) {
         setStats(prev => {
           const newCats = { ...prev.categories };
@@ -227,25 +228,17 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [aiLang, currentMessages, activeConvId, conversations, stats.sparks, isPro]);
+  }, [aiLang, translationLang, currentMessages, activeConvId, conversations, stats.sparks, isPro]);
 
   const handleDeepDive = useCallback(async (messageId: string, contextText: string) => {
-    if (!isPro) {
-      setShowProModal(true);
-      return;
-    }
-
-    if (stats.sparks < DEEP_DIVE_COST) {
-       // Placeholder for "Not enough sparks" toast/alert
-       return;
-    }
+    if (!isPro) { setShowProModal(true); return; }
+    if (stats.sparks < DEEP_DIVE_COST) return;
 
     setConversations(prev => prev.map(conv => conv.id === activeConvId ? {
       ...conv,
       messages: conv.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: true } : m)
     } : conv));
 
-    // Deduct Sparks for Pro Deep Dive
     setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - DEEP_DIVE_COST) }));
 
     try {
@@ -273,10 +266,7 @@ const App: React.FC = () => {
   const handleArchiveLesson = useCallback((lesson: CoachLesson) => {
     setStats(prev => {
       if (prev.archivedLessons.some(l => l.id === lesson.id)) return prev;
-      return {
-        ...prev,
-        archivedLessons: [...prev.archivedLessons, { ...lesson, timestamp: Date.now() }]
-      };
+      return { ...prev, archivedLessons: [...prev.archivedLessons, { ...lesson, timestamp: Date.now() }] };
     });
   }, []);
 
@@ -313,8 +303,9 @@ const App: React.FC = () => {
         onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); if(window.innerWidth < 1024) setIsSidebarExpanded(false); }}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
+        onDeleteAllChats={() => setShowDeleteAllConfirm(true)}
         archivedLessons={stats.archivedLessons}
-        onSelectLesson={(lesson) => { /* Logic to open modal if needed */ }}
+        onSelectLesson={() => {}}
         isPro={isPro}
         onUpgradeClick={() => setShowProModal(true)}
         isExpanded={isSidebarExpanded}
@@ -341,10 +332,7 @@ const App: React.FC = () => {
             <div className="max-w-4xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-8 flex-1 flex flex-col">
               {currentMessages.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center">
-                  <EmptyState 
-                    onSuggestionClick={handleSendMessage} 
-                    language={systemLang} 
-                  />
+                  <EmptyState onSuggestionClick={handleSendMessage} language={systemLang} />
                 </div>
               ) : (
                 <div className="space-y-4 sm:space-y-6 pb-2">
@@ -353,6 +341,7 @@ const App: React.FC = () => {
                       key={msg.id} 
                       message={msg} 
                       language={systemLang} 
+                      translationLanguage={translationLang}
                       isPro={isPro} 
                       onLockClick={() => setShowProModal(true)}
                       onDeepDive={handleDeepDive}
@@ -383,13 +372,7 @@ const App: React.FC = () => {
 
         {activeTab === 'practice' && (
           <footer className="shrink-0">
-            <InputArea 
-                onSend={handleSendMessage} 
-                isLoading={isLoading} 
-                language={systemLang} 
-                sparks={stats.sparks}
-                isPro={isPro}
-            />
+            <InputArea onSend={handleSendMessage} isLoading={isLoading} language={systemLang} sparks={stats.sparks} isPro={isPro} />
           </footer>
         )}
       </div>
@@ -400,17 +383,42 @@ const App: React.FC = () => {
         <SettingsModal 
           language={systemLang}
           aiLang={aiLang}
+          translationLang={translationLang}
           onClose={() => setShowSettingsModal(false)}
           onSetSystemLang={setSystemLang}
           onSetAiLang={setAiLang}
+          onSetTranslationLang={setTranslationLang}
         />
       )}
 
-      {showFeedbackModal && (
-        <FeedbackModal 
-          language={systemLang}
-          onClose={() => setShowFeedbackModal(false)}
-        />
+      {showFeedbackModal && <FeedbackModal language={systemLang} onClose={() => setShowFeedbackModal(false)} />}
+
+      {/* Delete All Chats Confirmation Modal */}
+      {showDeleteAllConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-[420px] rounded-[1.5rem] shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
+            <h3 className="text-[1.25rem] font-bold text-slate-900 mb-2 leading-tight">
+              {t.deleteConfirmTitle}
+            </h3>
+            <p className="text-slate-500 text-[0.875rem] mb-8 leading-relaxed">
+              {t.deleteConfirmDesc}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button 
+                onClick={() => setShowDeleteAllConfirm(false)}
+                className="px-6 py-3 rounded-full border border-slate-200 text-slate-900 font-bold text-[0.95rem] hover:bg-slate-50 transition-colors"
+              >
+                {t.cancel}
+              </button>
+              <button 
+                onClick={handleDeleteAllChats}
+                className="px-6 py-3 rounded-full bg-[#df3d31] text-white font-bold text-[0.95rem] hover:bg-[#c9362c] transition-colors shadow-sm"
+              >
+                {t.confirmDeletion}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

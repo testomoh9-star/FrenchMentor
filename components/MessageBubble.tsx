@@ -1,18 +1,19 @@
 
 import React, { useState } from 'react';
 import { Message, CorrectionResponse, SupportLanguage, UI_TRANSLATIONS } from '../types';
-import { Volume2, AlertCircle, BookOpen, ArrowRight, Loader2, CheckCircle2, Lock, Crown, GraduationCap, Layout, Sparkles, Zap } from 'lucide-react';
+import { Volume2, BookOpen, ArrowRight, Loader2, Lock, GraduationCap, Layout, Sparkles, Zap } from 'lucide-react';
 import { playFrenchTTS } from '../services/geminiService';
 
 interface MessageBubbleProps {
   message: Message;
   language: SupportLanguage;
+  translationLanguage: SupportLanguage;
   isPro?: boolean;
   onLockClick?: () => void;
   onDeepDive?: (messageId: string, contextText: string) => void;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro, onLockClick, onDeepDive }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, translationLanguage, isPro, onLockClick, onDeepDive }) => {
   const isUser = message.role === 'user';
   const [isPlaying, setIsPlaying] = useState(false);
   const t = UI_TRANSLATIONS[language];
@@ -48,6 +49,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
 
   if (!data) return null;
   const isPerfect = !data.corrections || data.corrections.length === 0;
+  const isFrenchTranslation = translationLanguage === 'French';
 
   const handlePlayAudio = async () => {
     if (!isPro) { onLockClick?.(); return; }
@@ -58,7 +60,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
 
   const contextForDive = `Original: ${data.corrections?.[0]?.original || ''}. Correction: ${data.correctedFrench}. Notes: ${data.tutorNotes}`;
 
-  // Mini parser for **bold** text (handles potential spaces and ensures clean rendering)
   const renderLineWithBold = (line: string) => {
     if (!line) return null;
     const parts = line.split(/(\*\*.*?\*\*)/g);
@@ -74,8 +75,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
   return (
     <div className={`flex justify-center w-full mb-6 sm:mb-10 ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
       <div className="w-full max-w-2xl flex flex-col gap-3 sm:gap-4">
-        
-        {/* Main Result Card */}
         <div className="bg-white rounded-[2rem] shadow-lg border border-slate-100 overflow-hidden">
           <div className={`${isPerfect ? 'bg-green-600' : 'bg-blue-600'} p-6 sm:p-8 flex justify-between items-start text-white transition-colors duration-500`}>
             <div dir="ltr" className="text-left flex-1 min-w-0">
@@ -85,7 +84,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
               <div className="text-2xl sm:text-4xl font-black leading-tight break-words">
                 {data.correctedFrench}
               </div>
-              <p className="text-white/80 italic mt-2 text-base sm:text-xl">"{data.englishTranslation}"</p>
+              <div className="mt-2">
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-60 block mb-0.5">
+                  {isFrenchTranslation ? t.alternativeLabel : t.translationLabel}
+                </span>
+                <p className="text-white/90 italic text-base sm:text-xl leading-snug">"{data.englishTranslation}"</p>
+              </div>
             </div>
             <button 
               onClick={handlePlayAudio}
@@ -121,7 +125,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
                 <p className={`text-sm text-slate-700 leading-relaxed font-medium ${isRtl ? 'text-right' : 'text-left'}`}>{data.tutorNotes}</p>
               </div>
 
-              {/* Deep Dive Button (Pro) */}
               {isPro && !data.deepDive && (
                 <button 
                   onClick={() => onDeepDive?.(message.id, contextForDive)}
@@ -139,7 +142,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
               )}
             </div>
 
-            {/* Render Deep Dive Content */}
             {data.deepDive && (
               <div className="mt-8 pt-8 border-t border-slate-100 animate-slide-in">
                 <div className={`flex items-center gap-3 mb-8 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -154,13 +156,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
                    {data.deepDive.split('\n').map((line, i) => {
                      const trimmedLine = line.trim();
                      if (!trimmedLine) return null;
-                     
-                     // Header check
                      if (trimmedLine.startsWith('#')) {
                        return <h5 key={i} className="text-xl font-black text-slate-900 mb-4 mt-2">{renderLineWithBold(trimmedLine.replace(/#/g, '').trim())}</h5>;
                      }
-                     
-                     // Numbered list check
                      const match = trimmedLine.match(/^(\d+)\.\s+(.*)/);
                      if (match) {
                        return (
@@ -172,12 +170,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, isPro,
                         </div>
                        );
                      }
-                     
-                     // Default text with bold support
                      return <p key={i} className="text-sm text-slate-600 leading-relaxed font-medium">{renderLineWithBold(trimmedLine)}</p>;
                    })}
                 </div>
-                
                 <div className="mt-8 bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex items-center gap-3">
                   <Sparkles size={16} className="text-indigo-600" />
                   <span className="text-[10px] font-black uppercase text-indigo-700 tracking-wider">Lesson Complete • Concept Mastered</span>
