@@ -68,7 +68,7 @@ const parseSafeJson = (text: string) => {
 };
 
 const SYSTEM_INSTRUCTION = `
-You are "FrenchMentor", an elite French language tutor. You help users improve their French through correction or translation.
+You are "LexiLift", an elite language performance platform and tutor. You help users reach native-level fluency in French through precision correction and deep analysis.
 
 ### CORE OPERATIONAL LOGIC:
 
@@ -172,7 +172,7 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
     .join(", ");
   
   const prompt = `
-    You are an elite French coach. The user has repetitive errors in the category: "${category}".
+    You are an elite coach for LexiLift. The user has repetitive errors in the category: "${category}".
     Recent context: ${filteredMistakes}.
     Generate a laser-focused report in ${language}. 
     MANDATORY: Keep it extremely concise. Do not repeat phrases.
@@ -183,7 +183,7 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
     model: 'gemini-3-flash-preview',
     contents: prompt,
     config: {
-      temperature: 0, // Deterministic to avoid runaway loops
+      temperature: 0, 
       maxOutputTokens: 2048,
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: "application/json",
@@ -215,7 +215,7 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
 export const generateDeepDive = async (context: string, language: SupportLanguage): Promise<string> => {
   const ai = getAI();
   const prompt = `
-    Analyze this correction context: "${context}".
+    Analyze this LexiLift correction context: "${context}".
     The user needs a "Deep Dive" structured lesson in ${language}.
     1. bold title using #. 2. numbered list for key points. 3. exactly 3 clear examples. 4. one "Actionable Tip".
     Keep the generation concise.
