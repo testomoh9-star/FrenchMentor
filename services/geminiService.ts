@@ -1,18 +1,16 @@
-
-import { GoogleGenAI, Chat, Type } from "@google/genai";
+import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
 import { SupportLanguage, Message, MistakeRecord } from "../types";
 
-let aiInstance: null | GoogleGenAI = null;
-
+/**
+ * Fix: Always initialize GoogleGenAI with the named apiKey parameter from process.env.API_KEY.
+ * Singleton pattern for aiInstance removed to ensure freshness per guidelines.
+ */
 const getAI = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey || apiKey === 'undefined') {
     throw new Error("API_KEY_MISSING");
   }
-  if (!aiInstance) {
-    aiInstance = new GoogleGenAI({ apiKey });
-  }
-  return aiInstance;
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 /**
@@ -179,6 +177,7 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
     Output JSON ONLY.
   `;
 
+  // Fix: Use ai.models.generateContent to query GenAI with both the model name and prompt.
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt,
@@ -220,6 +219,7 @@ export const generateDeepDive = async (context: string, language: SupportLanguag
     1. bold title using #. 2. numbered list for key points. 3. exactly 3 clear examples. 4. one "Actionable Tip".
     Keep the generation concise.
   `;
+  // Fix: Use ai.models.generateContent to query GenAI with both the model name and prompt.
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt,
@@ -256,11 +256,12 @@ async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: 
 
 export const playFrenchTTS = async (text: string): Promise<void> => {
   const ai = getAI();
+  // Fix: Use Modality.AUDIO instead of string literal 'AUDIO'.
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: text }] }],
     config: {
-      responseModalities: ['AUDIO'],
+      responseModalities: [Modality.AUDIO],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
     },
   });

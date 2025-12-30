@@ -10,61 +10,82 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      :root {
-        --app-height: 100dvh;
-      }
+      :root { --app-height: 100dvh; }
       body {
         font-family: 'Inter', sans-serif;
         height: var(--app-height);
         overflow: hidden;
         background-color: #f8fafc;
+        margin: 0;
       }
-      .font-arabic {
-        font-family: 'Noto Sans Arabic', sans-serif;
-      }
-      .safe-top {
-        padding-top: env(safe-area-inset-top, 0px);
-      }
-      .safe-bottom-padding {
-        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-      }
-      #root {
-        height: 100%;
-      }
-      ::-webkit-scrollbar {
-        width: 5px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #e2e8f0; 
-        border-radius: 10px;
-      }
-      .animate-slide-in {
-        animation: slideIn 0.3s ease-out;
-      }
+      .font-arabic { font-family: 'Noto Sans Arabic', sans-serif; }
+      .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+      .safe-bottom-padding { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+      #root { height: 100%; }
+      .animate-slide-in { animation: slideIn 0.3s ease-out; }
       @keyframes slideIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
+      }
+      #error-boundary {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: white;
+        padding: 40px;
+        text-align: center;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
       }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "vite": "https://esm.sh/vite@^7.3.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
   }
 }
 </script>
 </head>
   <body class="bg-slate-50 text-slate-900">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Simple fallback if JS takes too long -->
+      <div style="height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M22 12a10 10 0 0 1-10 10"></path>
+        </svg>
+        <p style="font-weight: 800; color: #64748b; font-size: 14px; letter-spacing: 0.05em; text-transform: uppercase;">Initializing LexiLift...</p>
+      </div>
+    </div>
+    
+    <!-- Crash Protection Script -->
+    <div id="error-boundary">
+      <h1 style="font-weight: 900; font-size: 24px; margin-bottom: 10px;">Oops! Something went wrong.</h1>
+      <p id="error-message" style="color: #64748b; max-width: 400px; margin-bottom: 20px;"></p>
+      <button onclick="window.location.reload()" style="background: #0f172a; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer;">Try Again</button>
+    </div>
+
+    <script>
+      window.onerror = function(msg, url, lineNo, columnNo, error) {
+        const boundary = document.getElementById('error-boundary');
+        const message = document.getElementById('error-message');
+        if (boundary && message) {
+          boundary.style.display = 'flex';
+          message.innerText = msg;
+        }
+        return false;
+      };
+    </script>
+
     <script type="module" src="/index.tsx"></script>
+    <style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
   </body>
 </html>

@@ -1,18 +1,21 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+  // Load env file based on `mode`. Use '' as the third argument to load all environment variables.
+  // Fix: use type assertion to access process.cwd() in environments where Node types might be missing or restricted.
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
     plugins: [react()],
     define: {
-      // This shim allows 'process.env.API_KEY' to work in the browser
-      // by replacing it with the string value of the key at build time.
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      // Replaces 'process.env.API_KEY' in the code with the actual string from the environment.
+      // This is crucial for Gemini API initialization.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || ''),
     },
+    build: {
+      outDir: 'dist',
+      sourcemap: mode === 'development',
+    }
   };
 });
