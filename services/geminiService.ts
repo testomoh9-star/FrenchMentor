@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Chat, Type, Modality } from "@google/genai";
 import { SupportLanguage, Message, MistakeRecord } from "../types";
 
@@ -170,40 +171,48 @@ export const generateCoachLesson = async (category: string, history: MistakeReco
     .join(", ");
   
   const prompt = `
-    You are an elite coach for LexiLift. The user has repetitive errors in the category: "${category}".
+    You are an elite linguistic pathologist for LexiLift. The user has repetitive errors in the category: "${category}".
     Recent context: ${filteredMistakes}.
-    Generate a laser-focused report in ${language}. 
-    MANDATORY: Keep it extremely concise. Do not repeat phrases.
-    Output JSON ONLY.
+    
+    TASK: Generate a "Premium Dossier" in ${language}.
+    1. Act as a pathology expert: Why did the user's brain slip? (Literal translation? Over-generalization? Phonetic confusion?)
+    2. level: Rate the complexity (A1-C2).
+    3. contrast: Provide a clear visual contrast between the "Mistake" and "Mastery".
+    4. mission: A specific actionable homework mission for the next 24 hours.
+    5. conjugation: If the category involves verbs or conjugation, provide a clear, organized text list (e.g., "Je vais, Tu vas...") using newlines for structure. DO NOT use a table object. If it's not a verb issue, leave this empty.
+    
+    Output JSON ONLY. Be extremely punchy and high-value.
   `;
 
-  // Fix: Use ai.models.generateContent to query GenAI with both the model name and prompt.
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3-pro-preview', 
     contents: prompt,
     config: {
-      temperature: 0, 
+      temperature: 0.1, 
       maxOutputTokens: 2048,
-      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
           title: { type: Type.STRING },
           category: { type: Type.STRING },
+          level: { type: Type.STRING, description: "Complexity level A1-C2" },
           mistakes: { type: Type.ARRAY, items: { type: Type.STRING } },
-          whyYouMadeIt: { type: Type.STRING },
-          theRule: { type: Type.STRING },
-          mentalTrick: { type: Type.STRING },
-          conjugationTable: { 
+          whyYouMadeIt: { type: Type.STRING, description: "Linguistic pathology analysis" },
+          theRule: { type: Type.STRING, description: "The Blueprint - concise rule" },
+          contrast: {
             type: Type.OBJECT,
             properties: {
-              je: { type: Type.STRING }, tu: { type: Type.STRING }, il_elle: { type: Type.STRING },
-              nous: { type: Type.STRING }, vous: { type: Type.STRING }, ils_elles: { type: Type.STRING }
-            }
-          }
+              before: { type: Type.STRING, description: "The incorrect common pattern" },
+              after: { type: Type.STRING, description: "The corrected native-level version" }
+            },
+            required: ["before", "after"]
+          },
+          mentalTrick: { type: Type.STRING, description: "Master Trick / Mnemonic" },
+          mission: { type: Type.STRING, description: "Actionable homework mission" },
+          conjugation: { type: Type.STRING, description: "Formatted text of verb patterns/forms if applicable" }
         },
-        required: ["title", "category", "mistakes", "whyYouMadeIt", "theRule", "mentalTrick"]
+        required: ["title", "category", "level", "mistakes", "whyYouMadeIt", "theRule", "contrast", "mentalTrick", "mission"]
       }
     }
   });
@@ -219,7 +228,6 @@ export const generateDeepDive = async (context: string, language: SupportLanguag
     1. bold title using #. 2. numbered list for key points. 3. exactly 3 clear examples. 4. one "Actionable Tip".
     Keep the generation concise.
   `;
-  // Fix: Use ai.models.generateContent to query GenAI with both the model name and prompt.
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: prompt,
@@ -256,7 +264,6 @@ async function decodeAudioData(data: Uint8Array, ctx: AudioContext, sampleRate: 
 
 export const playFrenchTTS = async (text: string): Promise<void> => {
   const ai = getAI();
-  // Fix: Use Modality.AUDIO instead of string literal 'AUDIO'.
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
     contents: [{ parts: [{ text: text }] }],

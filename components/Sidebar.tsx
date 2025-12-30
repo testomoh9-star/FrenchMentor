@@ -136,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 {!isPro && (
                   <button onClick={() => { onUpgradeClick(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
-                    <Sparkles size={16} className="text-blue-500" /> {t.upgradeTitle}
+                    <Sparkles size={16} className="text-cyan-500" /> {t.upgradeTitle}
                   </button>
                 )}
                 
@@ -246,7 +246,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {!isPro ? (
                   <div className="px-4 py-6 text-center bg-white/5 rounded-2xl mx-1">
                     <Lock size={16} className="text-white/10 mx-auto mb-2" />
-                    <button onClick={onUpgradeClick} className="text-[9px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300">
+                    <button onClick={onUpgradeClick} className="text-[9px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300">
                       Unlock Pro
                     </button>
                   </div>
@@ -255,7 +255,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 ) : (
                   archivedLessons.slice().reverse().map((lesson) => (
                     <button key={lesson.id} onClick={() => onSelectLesson(lesson)} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left text-white/50 hover:bg-white/5 hover:text-white group">
-                      <div className="bg-indigo-500/10 p-2 rounded-lg text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                      <div className="bg-cyan-500/10 p-2 rounded-lg text-cyan-400 group-hover:bg-gradient-to-br group-hover:from-cyan-400 group-hover:to-indigo-500 group-hover:text-white transition-all shrink-0">
                         <Lightbulb size={12} />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -271,7 +271,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="p-4 border-t border-white/5 bg-slate-950/40">
             {isPro ? (
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-900/40">
                   <Crown size={14} className="text-white" />
                 </div>
                 <div className="min-w-0">
@@ -280,7 +280,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               </div>
             ) : (
-              <button onClick={onUpgradeClick} className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-between transition-all group">
+              <button 
+                onClick={onUpgradeClick} 
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white flex items-center justify-between transition-all group shadow-lg shadow-indigo-900/20 active:scale-[0.98]"
+              >
                 <div className="flex items-center gap-2">
                   <Crown size={14} className="text-white/80 group-hover:text-white" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Join Pro</span>

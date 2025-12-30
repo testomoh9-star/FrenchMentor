@@ -96,7 +96,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
               className={`p-3 rounded-xl transition-all text-white shrink-0 ml-4 relative ${isPlaying ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30 active:scale-95'}`}
             >
               {isPlaying ? <Loader2 size={20} className="animate-spin" /> : <Volume2 size={20} />}
-              {!isPro && <div className="absolute -top-1 -right-1 bg-indigo-500 rounded-full p-0.5 border border-white"><Lock size={8} fill="currentColor" /></div>}
+              {!isPro && <div className="absolute -top-1 -right-1 bg-gradient-to-br from-cyan-400 to-indigo-500 rounded-full p-0.5 border border-white"><Lock size={8} fill="currentColor" /></div>}
             </button>
           </div>
 
@@ -132,11 +132,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
                   className="w-full flex flex-col items-center justify-center gap-1 px-6 py-4 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-[0.98] shadow-md disabled:opacity-50 group"
                 >
                   <div className="flex items-center gap-2">
-                    {message.isDeepDiveLoading ? <Loader2 size={16} className="animate-spin" /> : <GraduationCap size={16} className="text-indigo-400" />}
+                    {message.isDeepDiveLoading ? <Loader2 size={16} className="animate-spin" /> : <GraduationCap size={16} className="text-cyan-400" />}
                     {t.deepDiveBtn}
                   </div>
                   <div className="text-[9px] font-black text-white/50 flex items-center gap-1">
-                    COST 10 <Zap size={8} fill="currentColor" />
+                    COST 10 <Zap size={8} fill="currentColor" className="text-cyan-500" />
                   </div>
                 </button>
               )}
@@ -145,7 +145,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
             {data.deepDive && (
               <div className="mt-8 pt-8 border-t border-slate-100 animate-slide-in">
                 <div className={`flex items-center gap-3 mb-8 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
-                   <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-100"><Layout size={20} /></div>
+                   <div className="bg-gradient-to-br from-cyan-600 to-indigo-700 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-100"><Layout size={20} /></div>
                    <div>
                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t.deepDiveTitle}</h4>
                      <p className="text-lg font-black text-slate-900 leading-none">Grammar Mastery</p>
@@ -163,7 +163,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
                      if (match) {
                        return (
                         <div key={i} className={`flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 transition-all hover:bg-white hover:shadow-sm ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
-                          <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-sm shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-indigo-600 text-white flex items-center justify-center font-black text-sm shrink-0">
                             {match[1]}
                           </div>
                           <p className="text-sm font-medium text-slate-700 leading-relaxed pt-1 flex-1">{renderLineWithBold(match[2])}</p>

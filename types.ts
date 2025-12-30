@@ -28,11 +28,17 @@ export interface CoachLesson {
   id: string;
   title: string;
   category: string;
+  level: string; // A1, A2, B1, etc.
   mistakes: string[];
-  whyYouMadeIt: string;
-  theRule: string;
-  mentalTrick: string;
-  conjugationTable?: { [key: string]: string };
+  whyYouMadeIt: string; // The "Linguistic Pathology"
+  theRule: string; // The Blueprint
+  contrast: {
+    before: string;
+    after: string;
+  };
+  mentalTrick: string; // Master Trick
+  mission: string; // Practice Mission
+  conjugation?: string; // Flexible text-based organization instead of a table
   timestamp: number;
 }
 
@@ -95,6 +101,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     coachTrigger: "Detected a pattern in: {cat}",
     coachButton: "Analyze & Solve",
     archiveTitle: "Knowledge Library",
+    archiveEmpty: "Your solved missions will appear here.",
     proLabel: "PRO",
     upgradeTitle: "Upgrade plan",
     settings: "Settings",
@@ -158,6 +165,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     coachTrigger: "Schéma détecté dans : {cat}",
     coachButton: "Analyser & Résoudre",
     archiveTitle: "Bibliothèque",
+    archiveEmpty: "Vos missions résolues apparaîtront ici.",
     proLabel: "PRO",
     upgradeTitle: "Passer à Pro",
     settings: "Paramètres",
@@ -221,6 +229,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     coachTrigger: "تم اكتشاف نمط في: {cat}",
     coachButton: "تحليل وحل",
     archiveTitle: "المكتبة",
+    archiveEmpty: "ستظهر مهامك المحلولة هنا.",
     proLabel: "برو",
     upgradeTitle: "ترقية الخطة",
     settings: "الإعدادات",
@@ -284,6 +293,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     coachTrigger: "Patrón detectado en: {cat}",
     coachButton: "Analizar y Resolver",
     archiveTitle: "Biblioteca",
+    archiveEmpty: "Tus misiones resueltas aparecerán aquí.",
     proLabel: "PRO",
     upgradeTitle: "Mejorar plan",
     settings: "Ajustes",

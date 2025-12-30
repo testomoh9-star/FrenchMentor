@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { BrainStats, SupportLanguage, UI_TRANSLATIONS, CoachLesson } from '../types';
-import { Brain, Trophy, BarChart3, Clock, Lock, Crown, ArrowRight, Sparkles, Loader2, X, Lightbulb, BookOpen, ChevronRight, History } from 'lucide-react';
+import { Brain, Trophy, BarChart3, Clock, Lock, Crown, ArrowRight, Sparkles, Loader2, X, Lightbulb, BookOpen, ChevronRight, History, Zap, Target, ArrowDown } from 'lucide-react';
 import { generateCoachLesson, parseSafeJson } from '../services/geminiService';
 
 interface BrainDashboardProps {
@@ -30,18 +30,11 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
     return (t.catMap as any)[catKey] || catKey;
   };
 
-  /**
-   * Pending Missions Logic:
-   * We calculate how many missions (batches of 3 errors) are available versus archived.
-   * If a category has 9 errors and 1 archived lesson, it has 2 pending missions.
-   */
   const pendingMissions = useMemo(() => {
     const missions: { cat: string; count: number; missionIndex: number }[] = [];
     Object.entries(stats.categories).forEach(([cat, count]) => {
       const archivedCount = stats.archivedLessons.filter(l => l.category === cat).length;
       const totalAvailable = Math.floor(Number(count) / 3);
-      
-      // If we have more available batches than archived ones, show the next mission
       if (totalAvailable > archivedCount) {
         missions.push({ 
           cat, 
@@ -67,12 +60,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
         id: Date.now().toString(),
         timestamp: Date.now()
       };
-      
-      // CRITICAL: Archive immediately so it's saved in the library 
-      // even if the user just closes the modal with 'X'.
-      // This also causes the Mission Card to disappear from the UI instantly.
       onArchiveLesson(lessonData);
-      
       setActiveLesson(lessonData);
     } catch (e) {
       console.error("Coach failed:", e);
@@ -100,7 +88,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
       <div className={`flex-1 flex flex-col items-center justify-center p-6 text-center ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
         <div className="bg-blue-50 p-8 rounded-[3rem] mb-8 relative">
           <Brain size={64} className="text-blue-400 animate-pulse" />
-          <div className="absolute -top-2 -right-2 bg-indigo-500 text-white p-2 rounded-full shadow-lg">
+          <div className="absolute -top-2 -right-2 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white p-2 rounded-full shadow-lg">
             <Lock size={20} />
           </div>
         </div>
@@ -108,7 +96,6 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
         <p className="text-slate-500 max-w-sm leading-relaxed">
           {t.brainUnlock.replace("{n}", remainingToUnlock.toString())}
         </p>
-        
         <div className="mt-10 flex gap-2">
           {[1, 2, 3].map((step) => (
             <div 
@@ -123,10 +110,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
 
   return (
     <div className={`flex flex-col lg:flex-row h-full overflow-hidden ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
-      
-      {/* LEFT: Main Content Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 scrollbar-hide">
-        {/* Precision Level Card */}
         <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-blue-50/50 flex flex-col sm:flex-row items-center gap-8 animate-slide-in">
           <div className="text-center sm:text-left flex-1">
             <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
@@ -136,13 +120,12 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
             <p className="text-7xl font-black text-slate-900">{Math.round(precisionLevel)}%</p>
             <p className="text-slate-400 mt-2 text-sm font-medium">{t.statsSubtitle}</p>
           </div>
-          
           {!isPro && (
-            <div className="bg-indigo-600 p-6 rounded-3xl text-white max-w-xs relative overflow-hidden group">
+            <div className="bg-gradient-to-br from-cyan-500 to-indigo-600 p-6 rounded-3xl text-white max-w-xs relative overflow-hidden group shadow-xl shadow-indigo-100/50">
               <div className="relative z-10">
                  <div className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-black w-fit mb-3">{t.proLabel}</div>
                  <h4 className="font-bold text-lg mb-4">Master your patterns with Elite Coach.</h4>
-                 <button onClick={onUpgradeClick} className="w-full bg-white text-indigo-600 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2">
+                 <button onClick={onUpgradeClick} className="w-full bg-white text-indigo-600 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-indigo-50 active:scale-95 transition-all">
                    {t.getPro} <ArrowRight size={14} />
                  </button>
               </div>
@@ -151,15 +134,14 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
           )}
         </div>
 
-        {/* Pending Missions row */}
         {pendingMissions.length > 0 && (
           <section className="space-y-4 animate-slide-in" style={{ animationDelay: '0.1s' }}>
              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-               <Sparkles size={14} className="text-blue-500" /> {t.coachTitle}
+               <Sparkles size={14} className="text-cyan-500" /> {t.coachTitle}
              </h3>
              <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2 scrollbar-hide">
                 {pendingMissions.map((mission) => (
-                  <div key={mission.cat} className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-3xl text-white shadow-lg flex flex-col justify-between shrink-0 relative group">
+                  <div key={mission.cat} className="min-w-[240px] sm:min-w-[280px] bg-gradient-to-br from-cyan-500 to-indigo-600 p-5 rounded-3xl text-white shadow-lg flex flex-col justify-between shrink-0 relative group">
                     <div className="absolute top-4 right-4 bg-white/10 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest">
                       #{mission.missionIndex}
                     </div>
@@ -188,7 +170,6 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
           </section>
         )}
 
-        {/* Analytics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-slide-in" style={{ animationDelay: '0.2s' }}>
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
@@ -208,7 +189,6 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
               ))}
             </div>
           </div>
-
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
               <Clock size={20} className="text-blue-600" /> {t.recentLog}
@@ -230,7 +210,6 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
         </div>
       </div>
 
-      {/* RIGHT: History Sidebar (Knowledge Library) */}
       <aside className={`w-full lg:w-80 bg-white border-l border-slate-200 flex flex-col h-full shrink-0 ${!isPro ? 'hidden lg:flex' : 'flex'}`}>
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -239,7 +218,6 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
           </div>
           {!isPro && <Lock size={14} className="text-slate-300" />}
         </div>
-        
         <div className={`flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide ${!isPro ? 'blur-sm grayscale opacity-30 select-none pointer-events-none' : ''}`}>
           {stats.archivedLessons.length === 0 ? (
             <div className="py-12 text-center px-4">
@@ -253,7 +231,7 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
                 onClick={() => setActiveLesson(lesson)}
                 className="w-full bg-slate-50 p-4 rounded-2xl border border-transparent hover:border-indigo-200 hover:bg-white transition-all flex items-start gap-3 text-left group"
               >
-                <div className="bg-indigo-100 p-2 rounded-lg text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white transition-colors shrink-0">
+                <div className="bg-cyan-100 p-2 rounded-lg text-cyan-600 group-hover:bg-gradient-to-br group-hover:from-cyan-400 group-hover:to-indigo-500 group-hover:text-white transition-all shrink-0">
                   <Lightbulb size={16} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -267,75 +245,130 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({ stats, language, isPro,
             ))
           )}
         </div>
-        
         {!isPro && (
           <div className="p-6 border-t border-slate-100 bg-slate-50/50">
-            <button onClick={onUpgradeClick} className="w-full flex items-center justify-center gap-2 text-indigo-600 font-black text-xs uppercase tracking-widest hover:text-indigo-700 transition-all">
+            <button onClick={onUpgradeClick} className="w-full flex items-center justify-center gap-2 text-cyan-600 font-black text-xs uppercase tracking-widest hover:text-indigo-600 transition-all">
               Upgrade to Unlock Archive <ChevronRight size={14} />
             </button>
           </div>
         )}
       </aside>
 
-      {/* Coach Lesson Modal */}
+      {/* Coach Lesson Modal - REDESIGNED FOR DESKTOP & WRAPPING */}
       {activeLesson && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-           <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
-              <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-8 text-white relative shrink-0">
-                <button onClick={handleCloseModal} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
-                   <X size={20} />
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+           <div className="bg-white w-full max-w-xl sm:max-w-2xl lg:max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden relative flex flex-col max-h-[96vh] animate-in zoom-in-95 duration-200">
+              {/* Header with Level Badge */}
+              <div className="bg-gradient-to-r from-cyan-600 to-indigo-700 p-6 sm:p-10 text-white relative shrink-0">
+                <button onClick={handleCloseModal} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors z-20">
+                   <X size={24} />
                 </button>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-white/20 p-2 rounded-xl shrink-0">
-                    <Sparkles size={24} />
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="bg-white/20 p-3 rounded-2xl shrink-0">
+                    <Zap size={28} className="text-cyan-300" />
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black">{activeLesson.title}</h3>
+                  <h3 className="text-2xl sm:text-3xl font-black">{activeLesson.title}</h3>
                 </div>
-                <p className="text-white/80 font-bold uppercase tracking-widest text-[10px]">Topic: {translateCat(activeLesson.category)}</p>
+                <div className="flex items-center gap-4">
+                  <span className="text-white/80 font-bold uppercase tracking-widest text-xs">Topic: {translateCat(activeLesson.category)}</span>
+                  <div className="h-4 w-px bg-white/20" />
+                  <span className="bg-cyan-400 text-indigo-900 px-3 py-1 rounded-lg text-xs font-black">LEVEL {activeLesson.level || 'A1'}</span>
+                </div>
               </div>
 
-              <div className="p-8 space-y-8 overflow-y-auto flex-1">
-                <section>
-                  <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Why you made it</h5>
-                  <p className="text-slate-700 leading-relaxed font-medium italic">"{activeLesson.whyYouMadeIt}"</p>
-                </section>
+              {/* Modular Body */}
+              <div className="p-6 sm:p-10 space-y-12 overflow-y-auto flex-1 scrollbar-hide">
+                {/* Grid Layout for Desktop sections */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+                  {/* Left Side: Reasoning & Contrasts */}
+                  <div className="space-y-10">
+                    <section>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Brain size={18} className="text-slate-400" />
+                        <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Why your brain slipped</h5>
+                      </div>
+                      <p className="text-slate-700 leading-relaxed font-bold italic text-lg sm:text-xl">"{activeLesson.whyYouMadeIt}"</p>
+                    </section>
 
-                <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                  <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">The Simple Rule</h5>
-                  <p className="text-slate-800 font-bold text-base sm:text-lg leading-snug">{activeLesson.theRule}</p>
-                </section>
+                    <section className="space-y-4">
+                      <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <Target size={16} className="text-indigo-500" /> Mistake vs Mastery
+                      </h5>
+                      <div className="flex flex-col gap-3">
+                          <div className="bg-red-50 p-5 rounded-3xl border border-red-100 flex items-center justify-between">
+                            <span className="text-red-700 font-bold line-through opacity-60 text-base sm:text-lg">{activeLesson.contrast?.before}</span>
+                            <span className="text-red-400 text-[10px] font-black uppercase">Mistake</span>
+                          </div>
+                          <div className="flex justify-center -my-3 relative z-10">
+                            <div className="bg-white rounded-full p-2 shadow-md border border-slate-100">
+                              <ArrowDown size={18} className="text-slate-300" />
+                            </div>
+                          </div>
+                          <div className="bg-green-50 p-5 rounded-3xl border border-green-100 flex items-center justify-between">
+                            <span className="text-green-700 font-black text-base sm:text-lg">{activeLesson.contrast?.after}</span>
+                            <span className="text-green-500 text-[10px] font-black uppercase">Mastery</span>
+                          </div>
+                      </div>
+                    </section>
+                  </div>
 
-                {activeLesson.conjugationTable && Object.keys(activeLesson.conjugationTable).length > 0 && (
-                  <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="bg-slate-100 px-4 py-2 border-b border-slate-200">
-                      <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Verb Conjugation</h5>
+                  {/* Right Side: Rule & Tricks */}
+                  <div className="space-y-10">
+                    <section className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100">
+                      <h5 className="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-4">The Blueprint</h5>
+                      <p className="text-slate-800 font-bold text-lg leading-relaxed">{activeLesson.theRule}</p>
+                    </section>
+
+                    <section className="bg-indigo-50 p-8 rounded-[2rem] border border-indigo-100 relative overflow-hidden group">
+                      <div className="flex items-center gap-3 mb-4 relative z-10">
+                        <Lightbulb size={22} className="text-indigo-600" />
+                        <h5 className="text-[11px] font-black text-indigo-600 uppercase tracking-widest">Master Trick</h5>
+                      </div>
+                      <p className="text-indigo-900 font-black text-xl sm:text-2xl leading-tight relative z-10">{activeLesson.mentalTrick}</p>
+                      <Crown size={120} className="absolute -bottom-6 -right-6 opacity-[0.05] -rotate-12 transition-transform group-hover:rotate-0" />
+                    </section>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Full Width Modules */}
+                <div className="space-y-10 pt-4">
+                  {/* Verb Conjugation Pattern - FLEXIBLE TEXT BLOCK */}
+                  {activeLesson.conjugation && activeLesson.conjugation.trim().length > 0 && (
+                    <section className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+                      <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                        <h5 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Verb Pattern Analysis</h5>
+                        <span className="text-[10px] text-slate-400 font-bold">Concept Spotlight</span>
+                      </div>
+                      <div className="p-8 bg-white">
+                        <p className="text-base sm:text-lg font-bold text-indigo-900 whitespace-pre-wrap leading-relaxed">
+                          {activeLesson.conjugation}
+                        </p>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Practice Mission */}
+                  <section className="pt-6 border-t border-slate-100">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles size={20} className="text-cyan-500" />
+                      <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Active Learning Mission</h5>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-y divide-slate-100">
-                      {Object.entries(activeLesson.conjugationTable).map(([pronoun, form]) => (
-                        <div key={pronoun} className="px-4 py-3 flex flex-col bg-white">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">{pronoun.replace(/_/g,' ')}</span>
-                          <span className="text-sm font-black text-indigo-700 truncate">{form}</span>
-                        </div>
-                      ))}
+                    <div className="bg-gradient-to-r from-cyan-50/50 to-indigo-50/50 p-8 rounded-[2rem] border-2 border-dashed border-indigo-200/50">
+                      <p className="text-indigo-900 font-black text-lg sm:text-xl leading-relaxed text-center italic">
+                        "{activeLesson.mission}"
+                      </p>
                     </div>
                   </section>
-                )}
-
-                <section className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Lightbulb size={18} className="text-indigo-600" />
-                    <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Mental Trick</h5>
-                  </div>
-                  <p className="text-indigo-900 font-black text-lg sm:text-xl leading-tight">{activeLesson.mentalTrick}</p>
-                </section>
+                </div>
               </div>
 
-              <div className="p-8 pt-4 shrink-0 border-t bg-slate-50">
+              {/* Action Footer */}
+              <div className="p-6 sm:p-8 pt-4 shrink-0 border-t bg-white flex justify-center">
                 <button 
                   onClick={handleCloseModal}
-                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-slate-100 active:scale-95 transition-all"
+                  className="w-full max-w-sm bg-slate-900 text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-slate-100 active:scale-95 transition-all hover:bg-slate-800"
                 >
-                  Got it!
+                  Dossier Reviewed
                 </button>
               </div>
            </div>
