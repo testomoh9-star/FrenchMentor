@@ -2,6 +2,14 @@
 export type SupportLanguage = 'English' | 'French' | 'Arabic';
 export type SystemLanguage = 'English' | 'French' | 'Arabic' | 'Spanish';
 
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  is_pro: boolean;
+}
+
 export interface CorrectionItem {
   original: string;
   corrected: string;
@@ -28,17 +36,17 @@ export interface CoachLesson {
   id: string;
   title: string;
   category: string;
-  level: string; // A1, A2, B1, etc.
+  level: string; 
   mistakes: string[];
-  whyYouMadeIt: string; // The "Linguistic Pathology"
-  theRule: string; // The Blueprint
+  whyYouMadeIt: string; 
+  theRule: string; 
   contrast: {
     before: string;
     after: string;
   };
-  mentalTrick: string; // Master Trick
-  mission: string; // Practice Mission
-  conjugation?: string; // Flexible text-based organization instead of a table
+  mentalTrick: string; 
+  mission: string; 
+  conjugation?: string; 
   timestamp: number;
 }
 
@@ -71,6 +79,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
   English: {
     navPractice: "Practice",
     navBrain: "My Brain",
+    login: "Log in",
+    signup: "Sign up for free",
+    guestModeTitle: "Guest Mode",
+    guestModeDesc: "History and Brain Dashboard are disabled. Sign up to save your progress.",
     newChat: "New Chat",
     recentChats: "Recent Chats",
     deleteAll: "Delete all",
@@ -135,6 +147,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
   French: {
     navPractice: "Pratique",
     navBrain: "Mon Cerveau",
+    login: "Connexion",
+    signup: "S'inscrire gratuitement",
+    guestModeTitle: "Mode Invité",
+    guestModeDesc: "L'historique et le tableau de bord sont désactivés. Inscrivez-vous pour sauvegarder votre progression.",
     newChat: "Nouvelle Discussion",
     recentChats: "Discussions Récentes",
     deleteAll: "Tout supprimer",
@@ -199,6 +215,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
   Arabic: {
     navPractice: "تمرين",
     navBrain: "دماغي",
+    login: "تسجيل الدخول",
+    signup: "اشترك مجانًا",
+    guestModeTitle: "وضع الزائر",
+    guestModeDesc: "السجل ولوحة التحكم معطلان. سجل لتتبع تقدمك.",
     newChat: "محادثة جديدة",
     recentChats: "المحادثات الأخيرة",
     deleteAll: "حذف الكل",
@@ -255,7 +275,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "C'est un bon idée",
       "Je n'ai pas de l'argent",
       "Je cherche pour mon chat",
-      "Je suis fini avec محادثتي",
+      "Je suis fini مع محادثتي",
       "Est-ce que tu peux m'aider avec ça?",
       "S'il vous plaît, parlez plus lentement"
     ]
@@ -263,6 +283,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
   Spanish: {
     navPractice: "Práctica",
     navBrain: "Mi Cerebro",
+    login: "Iniciar sesión",
+    signup: "Regístrate gratis",
+    guestModeTitle: "Modo Invitado",
+    guestModeDesc: "El historial y el panel de control están desactivados. Regístrate para guardar tu progreso.",
     newChat: "Nuevo Chat",
     recentChats: "Chats Recientes",
     deleteAll: "Eliminar todo",

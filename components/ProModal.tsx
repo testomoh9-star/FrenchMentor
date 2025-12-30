@@ -22,6 +22,12 @@ const ProModal: React.FC<ProModalProps> = ({ language, onClose, onUpgrade }) => 
     "Save lessons & mistakes to your library"
   ];
 
+  const handleUpgradeClick = () => {
+    // Replace this with your Lemon Squeezy checkout link
+    // window.open('https://your-store.lemonsqueezy.com/checkout/buy/...', '_blank');
+    onUpgrade();
+  };
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
       <div 
@@ -88,7 +94,7 @@ const ProModal: React.FC<ProModalProps> = ({ language, onClose, onUpgrade }) => 
           {/* CTA Button */}
           <div className="w-full space-y-4 mb-8 sm:mb-10">
             <button 
-              onClick={onUpgrade}
+              onClick={handleUpgradeClick}
               className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white py-4 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-indigo-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               Upgrade to Pro
@@ -101,8 +107,8 @@ const ProModal: React.FC<ProModalProps> = ({ language, onClose, onUpgrade }) => 
 
           {/* Comparison Footer */}
           <div className="mt-auto pt-6 border-t border-slate-100 w-full text-center">
-             <p className="text-slate-500 font-bold text-[0.85rem] sm:text-[0.95rem]">
-               Free: <span className="text-slate-900">5/day</span> • <span className="text-indigo-600 font-black">Pro</span>: Practice without limits
+             <p className="text-slate-400 font-bold text-[0.85rem] sm:text-[0.95rem] tracking-tight">
+               Free: 4 corrections/day • <span className="text-indigo-600 font-black">Pro: </span><span className="text-slate-900 font-black">Practice without limits</span>
              </p>
           </div>
         </div>

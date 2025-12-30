@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Message, SupportLanguage, SystemLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation } from './types';
+import { Message, SupportLanguage, SystemLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation, User } from './types';
 import { sendMessageToGemini, resetChatSession, generateDeepDive } from './services/geminiService';
+import { getBrowserFingerprint, supabase, supabaseClient } from './services/supabaseService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
 import InputArea from './components/InputArea';
@@ -12,7 +13,8 @@ import Sidebar from './components/Sidebar';
 import SettingsModal from './components/SettingsModal';
 import FeedbackModal from './components/FeedbackModal';
 import CoachLessonModal from './components/CoachLessonModal';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import AuthModal from './components/AuthModal';
+import { Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'french_mentor_conversations';
 const STORAGE_KEY_CUR_CONV = 'french_mentor_cur_conv';
@@ -20,55 +22,83 @@ const STORAGE_KEY_SYSTEM_LANG = 'french_mentor_system_lang';
 const STORAGE_KEY_AI_LANG = 'french_mentor_ai_lang';
 const STORAGE_KEY_TRANS_LANG = 'french_mentor_trans_lang';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
-const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 
-const FREE_DAILY_MAX = 5;
+const FREE_DAILY_MAX = 8;
 const PRO_MONTHLY_MAX = 1000;
 const FREE_COST_PER_MSG = 2;
 const PRO_COST_PER_MSG = 1;
-const DEEP_DIVE_COST = 10;
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [deviceId, setDeviceId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
   const [showProModal, setShowProModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
-  const [isPro, setIsPro] = useState<boolean>(() => localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true');
-  const [configError, setConfigError] = useState<string | null>(null);
-  
-  // Hoisted state for viewing lessons from missions or archive
   const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
+
+  // Check Supabase session on mount
+  useEffect(() => {
+    supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        supabase.getProfile(session.user.id).then(profile => {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            full_name: profile?.full_name || session.user.email?.split('@')[0],
+            is_pro: profile?.is_pro || false
+          });
+        });
+      }
+    });
+
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        supabase.getProfile(session.user.id).then(profile => {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            full_name: profile?.full_name || session.user.email?.split('@')[0],
+            is_pro: profile?.is_pro || false
+          });
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_CONVS);
     try { return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
   });
 
-  const [activeConvId, setActiveConvId] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEY_CUR_CONV);
-  });
+  const [guestMessages, setGuestMessages] = useState<Message[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(localStorage.getItem(STORAGE_KEY_CUR_CONV));
 
   const [systemLang, setSystemLang] = useState<SystemLanguage>(() => {
-    return (localStorage.getItem(STORAGE_KEY_SYSTEM_LANG) as SystemLanguage) || 'English';
+    return (localStorage.getItem(STORAGE_KEY_SYSTEM_LANG) as SystemLanguage) || 'French';
   });
 
   const [aiLang, setAiLang] = useState<SupportLanguage>(() => {
-    return (localStorage.getItem(STORAGE_KEY_AI_LANG) as SupportLanguage) || 'English';
+    return (localStorage.getItem(STORAGE_KEY_AI_LANG) as SupportLanguage) || 'French';
   });
 
   const [translationLang, setTranslationLang] = useState<SupportLanguage>(() => {
-    return (localStorage.getItem(STORAGE_KEY_TRANS_LANG) as SupportLanguage) || 'English';
+    return (localStorage.getItem(STORAGE_KEY_TRANS_LANG) as SupportLanguage) || 'French';
   });
 
   const [stats, setStats] = useState<BrainStats>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_STATS);
     try { 
       const parsed = saved ? JSON.parse(saved) : null;
-      return parsed || { totalCorrections: 0, categories: {}, history: [], sparks: 10, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
+      return parsed || { totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
     } catch (e) { 
-      return { totalCorrections: 0, categories: {}, history: [], sparks: 10, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
+      return { totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
     }
   });
 
@@ -76,108 +106,66 @@ const App: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const t = UI_TRANSLATIONS[systemLang];
   const isRtl = systemLang === 'Arabic';
+  const isPro = user?.is_pro;
+
+  // Sync with guest DB
+  useEffect(() => {
+    getBrowserFingerprint().then(id => {
+      setDeviceId(id);
+      if (!user) {
+        supabase.getGuestSparks(id).then(sparks => {
+          setStats(prev => ({ ...prev, sparks }));
+        });
+      }
+    });
+  }, [user]);
 
   const currentMessages = useMemo(() => {
+    if (!user) return guestMessages;
     if (!activeConvId) return [];
     return conversations.find(c => c.id === activeConvId)?.messages || [];
-  }, [activeConvId, conversations]);
+  }, [user, activeConvId, conversations, guestMessages]);
 
-  // Refill Logic Engine
-  useEffect(() => {
-    const now = Date.now();
-    const lastRefill = stats.lastRefillTimestamp || 0;
-    const msInDay = 24 * 60 * 60 * 1000;
-    const msInMonth = 30 * msInDay;
+  const handleLogin = (newUser: User) => {
+    setUser(newUser);
+    setShowAuthModal(false);
+    resetChatSession();
+  };
 
-    let shouldRefill = false;
-    let newSparkCount = stats.sparks;
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setConversations([]);
+    setGuestMessages([]);
+    setActiveConvId(null);
+    resetChatSession();
+  };
 
-    if (isPro) {
-      if (now - lastRefill >= msInMonth) {
-        if (stats.sparks < PRO_MONTHLY_MAX) {
-          newSparkCount = PRO_MONTHLY_MAX;
-          shouldRefill = true;
-        }
-      } else if (stats.sparks < FREE_DAILY_MAX && lastRefill === 0) {
-          newSparkCount = PRO_MONTHLY_MAX;
-          shouldRefill = true;
-      }
-    } else {
-      if (now - lastRefill >= msInDay) {
-        if (stats.sparks < FREE_DAILY_MAX) {
-          newSparkCount = FREE_DAILY_MAX;
-          shouldRefill = true;
-        }
-      }
-    }
-
-    if (shouldRefill) {
-      setStats(prev => ({ ...prev, sparks: newSparkCount, lastRefillTimestamp: now }));
-    }
-  }, [isPro, stats.lastRefillTimestamp, stats.sparks]);
-
-  const handleUpgradeToPro = useCallback(() => {
-    setIsPro(true);
-    setStats(prev => ({
-      ...prev,
-      sparks: Math.max(prev.sparks, PRO_MONTHLY_MAX),
-      lastRefillTimestamp: Date.now()
-    }));
-    setShowProModal(false);
-  }, []);
-
-  // Persist Languages
   useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
   useEffect(() => { localStorage.setItem(STORAGE_KEY_AI_LANG, aiLang); }, [aiLang]);
   useEffect(() => { localStorage.setItem(STORAGE_KEY_TRANS_LANG, translationLang); }, [translationLang]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_CONVS, JSON.stringify(conversations));
-    if (activeTab === 'practice') {
-      scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
-    }
-  }, [conversations, activeTab]);
+    if (user) localStorage.setItem(STORAGE_KEY_CONVS, JSON.stringify(conversations));
+    scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+  }, [conversations, guestMessages, activeTab, user]);
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats)); }, [stats]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_IS_PRO, String(isPro)); }, [isPro]);
-  useEffect(() => { if(activeConvId) localStorage.setItem(STORAGE_KEY_CUR_CONV, activeConvId); }, [activeConvId]);
+  useEffect(() => { 
+    localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
+    if (!user && deviceId) {
+      supabase.updateGuestSparks(deviceId, stats.sparks);
+    }
+  }, [stats, user, deviceId]);
 
   const handleNewChat = useCallback(() => {
-    const activeConv = conversations.find(c => c.id === activeConvId);
-    if (activeConv && activeConv.messages.length === 0) {
-      setActiveTab('practice');
-      return; 
-    }
+    if (!user) { setShowAuthModal(true); return; }
     const id = Date.now().toString();
     const newConv: Conversation = { id, title: t.newChat, messages: [], timestamp: Date.now() };
     setConversations(prev => [...prev, newConv]);
     setActiveConvId(id);
     setActiveTab('practice');
     resetChatSession();
-  }, [conversations, activeConvId, t.newChat]);
-
-  const handleDeleteChat = useCallback((id: string) => {
-    setConversations(prev => {
-      const filtered = prev.filter(c => c.id !== id);
-      if (activeConvId === id) {
-        setActiveConvId(filtered.length > 0 ? filtered[filtered.length - 1].id : null);
-      }
-      return filtered;
-    });
-  }, [activeConvId]);
-
-  const handleRenameChat = useCallback((id: string, newTitle: string) => {
-    setConversations(prev => prev.map(c => c.id === id ? { ...c, title: newTitle } : c));
-  }, []);
-
-  const handleDeleteAllChats = useCallback(() => {
-    setConversations([]);
-    setActiveConvId(null);
-    localStorage.removeItem(STORAGE_KEY_CONVS);
-    localStorage.removeItem(STORAGE_KEY_CUR_CONV);
-    resetChatSession();
-    setShowDeleteAllConfirm(false);
-  }, []);
+  }, [user, t.newChat]);
 
   const handleSendMessage = useCallback(async (content: string) => {
     const cost = isPro ? PRO_COST_PER_MSG : FREE_COST_PER_MSG;
@@ -186,22 +174,21 @@ const App: React.FC = () => {
       return;
     }
 
-    let targetConvId = activeConvId;
-    const currentConv = conversations.find(c => c.id === activeConvId);
+    const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
     
-    if (!targetConvId || (currentConv && currentConv.messages.length === 0)) {
-        if (!targetConvId) {
-            targetConvId = Date.now().toString();
-            const newConv: Conversation = { id: targetConvId, title: content.slice(0, 30) + "...", messages: [], timestamp: Date.now() };
-            setConversations(prev => [...prev, newConv]);
-            setActiveConvId(targetConvId);
-        } else {
-            setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, title: content.slice(0, 30) + "..." } : c));
-        }
+    if (!user) {
+      setGuestMessages(prev => [...prev, newUserMessage]);
+    } else {
+      let targetConvId = activeConvId;
+      if (!targetConvId) {
+        targetConvId = Date.now().toString();
+        const newConv: Conversation = { id: targetConvId, title: content.slice(0, 30) + "...", messages: [], timestamp: Date.now() };
+        setConversations(prev => [...prev, newConv]);
+        setActiveConvId(targetConvId);
+      }
+      setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, messages: [...c.messages, newUserMessage], timestamp: Date.now() } : c));
     }
 
-    const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
-    setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, messages: [...c.messages, newUserMessage], timestamp: Date.now() } : c));
     setIsLoading(true);
     setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - cost) }));
 
@@ -209,10 +196,11 @@ const App: React.FC = () => {
       const jsonResponse = await sendMessageToGemini(content, aiLang, translationLang, currentMessages);
       const newAiMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', content: jsonResponse, timestamp: Date.now() };
       
-      setConversations(prev => prev.map(c => {
-        if (c.id === targetConvId) return { ...c, messages: [...c.messages, newAiMessage] };
-        return c;
-      }));
+      if (!user) {
+        setGuestMessages(prev => [...prev, newAiMessage]);
+      } else {
+        setConversations(prev => prev.map(c => c.id === activeConvId ? { ...c, messages: [...c.messages, newAiMessage] } : c));
+      }
 
       const data: CorrectionResponse = JSON.parse(jsonResponse);
       if (data.corrections && data.corrections.length > 0) {
@@ -227,97 +215,37 @@ const App: React.FC = () => {
         });
       }
     } catch (error: any) {
-      if (error.message === "API_KEY_MISSING") setConfigError("API Key is missing or invalid.");
-      else console.error(error);
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
-  }, [aiLang, translationLang, currentMessages, activeConvId, conversations, stats.sparks, isPro]);
-
-  const handleDeepDive = useCallback(async (messageId: string, contextText: string) => {
-    if (!isPro) { setShowProModal(true); return; }
-    if (stats.sparks < DEEP_DIVE_COST) return;
-
-    setConversations(prev => prev.map(conv => conv.id === activeConvId ? {
-      ...conv,
-      messages: conv.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: true } : m)
-    } : conv));
-
-    setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - DEEP_DIVE_COST) }));
-
-    try {
-      const deepDiveContent = await generateDeepDive(contextText, aiLang);
-      setConversations(prev => prev.map(conv => conv.id === activeConvId ? {
-        ...conv,
-        messages: conv.messages.map(m => {
-          if (m.id === messageId) {
-            const parsed = JSON.parse(m.content);
-            parsed.deepDive = deepDiveContent;
-            return { ...m, content: JSON.stringify(parsed), isDeepDiveLoading: false };
-          }
-          return m;
-        })
-      } : conv));
-    } catch (e) {
-      console.error(e);
-      setConversations(prev => prev.map(conv => conv.id === activeConvId ? {
-        ...conv,
-        messages: conv.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: false } : m)
-      } : conv));
-    }
-  }, [activeConvId, aiLang, isPro, stats.sparks]);
-
-  const handleArchiveLesson = useCallback((lesson: CoachLesson) => {
-    setStats(prev => {
-      if (prev.archivedLessons.some(l => l.id === lesson.id)) return prev;
-      return { ...prev, archivedLessons: [...prev.archivedLessons, { ...lesson, timestamp: Date.now() }] };
-    });
-  }, []);
-
-  const pendingMissionsCount = useMemo(() => {
-    let count = 0;
-    Object.entries(stats.categories).forEach(([cat, errCount]) => {
-      const archivedCount = stats.archivedLessons.filter(l => l.category === cat).length;
-      const totalAvailable = Math.floor(Number(errCount) / 3);
-      if (totalAvailable > archivedCount) count++;
-    });
-    return count;
-  }, [stats.categories, stats.archivedLessons]);
-
-  if (configError) {
-    return (
-      <div className="h-full flex items-center justify-center bg-slate-50 p-6 text-center">
-        <div className="bg-white p-10 rounded-[2rem] shadow-xl border border-red-100 max-w-sm">
-          <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Configuration Error</h2>
-          <p className="text-slate-500 mb-6">{configError}</p>
-          <button onClick={() => window.location.reload()} className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold">Retry</button>
-        </div>
-      </div>
-    );
-  }
+  }, [aiLang, translationLang, currentMessages, activeConvId, user, stats.sparks, isPro]);
 
   return (
     <div className={`flex h-full relative font-sans ${isRtl ? 'font-arabic' : ''} bg-slate-50 text-slate-900`}>
-      <Sidebar 
-        language={systemLang}
-        conversations={conversations}
-        activeConversationId={activeConvId}
-        onNewChat={handleNewChat}
-        onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); if(window.innerWidth < 1024) setIsSidebarExpanded(false); }}
-        onDeleteChat={handleDeleteChat}
-        onRenameChat={handleRenameChat}
-        onDeleteAllChats={() => setShowDeleteAllConfirm(true)}
-        archivedLessons={stats.archivedLessons}
-        onSelectLesson={(lesson) => setActiveLesson(lesson)}
-        isPro={isPro}
-        onUpgradeClick={() => setShowProModal(true)}
-        isExpanded={isSidebarExpanded}
-        onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
-        translateCat={(cat) => (t.catMap as any)[cat] || cat}
-        onOpenSettings={() => setShowSettingsModal(true)}
-        onOpenFeedback={() => setShowFeedbackModal(true)}
-      />
+      {user && (
+        <Sidebar 
+          language={systemLang}
+          conversations={conversations}
+          activeConversationId={activeConvId}
+          onNewChat={handleNewChat}
+          onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); }}
+          onDeleteChat={(id) => setConversations(prev => prev.filter(c => c.id !== id))}
+          onRenameChat={(id, title) => setConversations(prev => prev.map(c => c.id === id ? {...c, title} : c))}
+          onDeleteAllChats={() => {}}
+          archivedLessons={stats.archivedLessons}
+          onSelectLesson={(lesson) => setActiveLesson(lesson)}
+          isPro={!!isPro}
+          onUpgradeClick={() => setShowProModal(true)}
+          isExpanded={isSidebarExpanded}
+          onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
+          translateCat={(cat) => (t.catMap as any)[cat] || cat}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onOpenFeedback={() => setShowFeedbackModal(true)}
+          onLogout={handleLogout}
+          user={user}
+        />
+      )}
 
       <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
         <Header 
@@ -325,13 +253,21 @@ const App: React.FC = () => {
           sparks={stats.sparks}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          isPro={isPro}
-          hasNotifications={isPro && pendingMissionsCount > 0}
+          user={user}
+          onOpenAuth={() => setShowAuthModal(true)}
           isSidebarExpanded={isSidebarExpanded}
           onToggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)}
         />
 
         <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth flex flex-col relative">
+          {!user && activeTab === 'practice' && (
+            <div className="bg-orange-50 border-b border-orange-100 p-2 flex items-center justify-center gap-2 text-[10px] sm:text-xs font-bold text-orange-700">
+               <ShieldAlert size={14} />
+               <span>{t.guestModeDesc}</span>
+               <button onClick={() => setShowAuthModal(true)} className="underline ml-2">Sign up now</button>
+            </div>
+          )}
+
           {activeTab === 'practice' ? (
             <div className="max-w-4xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-8 flex-1 flex flex-col">
               {currentMessages.length === 0 ? (
@@ -346,13 +282,12 @@ const App: React.FC = () => {
                       message={msg} 
                       language={systemLang} 
                       translationLanguage={translationLang}
-                      isPro={isPro} 
-                      onLockClick={() => setShowProModal(true)}
-                      onDeepDive={handleDeepDive}
+                      isPro={!!isPro} 
+                      onLockClick={() => user ? setShowProModal(true) : setShowAuthModal(true)}
                     />
                   ))}
                   {isLoading && (
-                    <div className={`flex justify-center w-full my-4 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className="flex justify-center w-full my-4">
                       <div className="bg-white/90 backdrop-blur-sm px-6 py-4 rounded-full shadow-md border border-slate-100 flex items-center gap-3">
                         <Loader2 className="animate-spin text-blue-600" size={18} />
                         <span className="text-slate-600 font-bold text-sm">{t.analyzing}</span>
@@ -366,10 +301,10 @@ const App: React.FC = () => {
             <BrainDashboard 
               stats={stats} 
               language={systemLang} 
-              isPro={isPro} 
+              isPro={!!isPro} 
               onUpgradeClick={() => setShowProModal(true)} 
-              userMessageCount={conversations.reduce((acc, c) => acc + c.messages.filter(m => m.role === 'user').length, 0)}
-              onArchiveLesson={handleArchiveLesson}
+              userMessageCount={stats.totalCorrections}
+              onArchiveLesson={() => {}}
               onOpenLesson={(lesson) => setActiveLesson(lesson)}
             />
           )}
@@ -377,12 +312,13 @@ const App: React.FC = () => {
 
         {activeTab === 'practice' && (
           <footer className="shrink-0">
-            <InputArea onSend={handleSendMessage} isLoading={isLoading} language={systemLang} sparks={stats.sparks} isPro={isPro} />
+            <InputArea onSend={handleSendMessage} isLoading={isLoading} language={systemLang} sparks={stats.sparks} isPro={!!isPro} />
           </footer>
         )}
       </div>
 
-      {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={handleUpgradeToPro} />}
+      {showAuthModal && <AuthModal language={systemLang} onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}
+      {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={() => {}} />}
       
       {showSettingsModal && (
         <SettingsModal 
@@ -404,34 +340,6 @@ const App: React.FC = () => {
           language={systemLang} 
           onClose={() => setActiveLesson(null)} 
         />
-      )}
-
-      {/* Delete All Chats Confirmation Modal */}
-      {showDeleteAllConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-[420px] rounded-[1.5rem] shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
-            <h3 className="text-[1.25rem] font-bold text-slate-900 mb-2 leading-tight">
-              {t.deleteConfirmTitle}
-            </h3>
-            <p className="text-slate-500 text-[0.875rem] mb-8 leading-relaxed">
-              {t.deleteConfirmDesc}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button 
-                onClick={() => setShowDeleteAllConfirm(false)}
-                className="px-6 py-3 rounded-full border border-slate-200 text-slate-900 font-bold text-[0.95rem] hover:bg-slate-50 transition-colors"
-              >
-                {t.cancel}
-              </button>
-              <button 
-                onClick={handleDeleteAllChats}
-                className="px-6 py-3 rounded-full bg-[#df3d31] text-white font-bold text-[0.95rem] hover:bg-[#c9362c] transition-colors shadow-sm"
-              >
-                {t.confirmDeletion}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

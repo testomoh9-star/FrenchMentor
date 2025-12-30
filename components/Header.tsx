@@ -1,15 +1,15 @@
 
 import React from 'react';
-import { Zap, MessageSquare, Brain, Crown, Menu, Plus } from 'lucide-react';
-import { SystemLanguage, UI_TRANSLATIONS } from '../types';
+import { Zap, MessageSquare, Brain, Crown, Menu, UserCircle } from 'lucide-react';
+import { SystemLanguage, UI_TRANSLATIONS, User } from '../types';
 
 interface HeaderProps {
   language: SystemLanguage;
   sparks: number;
   activeTab: 'practice' | 'brain';
   setActiveTab: (tab: 'practice' | 'brain') => void;
-  isPro?: boolean;
-  hasNotifications?: boolean;
+  user: User | null;
+  onOpenAuth: () => void;
   isSidebarExpanded: boolean;
   onToggleSidebar: () => void;
 }
@@ -19,15 +19,15 @@ const Header: React.FC<HeaderProps> = ({
   sparks, 
   activeTab, 
   setActiveTab,
-  isPro,
-  hasNotifications,
+  user,
+  onOpenAuth,
   isSidebarExpanded,
   onToggleSidebar
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
+  const isPro = user?.is_pro;
 
-  // Official Logo Assets - Single SVG optimized for space
   const LexiBranding = () => {
     const commonDefs = (
       <defs>
@@ -58,7 +58,6 @@ const Header: React.FC<HeaderProps> = ({
 
     return (
       <div className="flex items-center gap-1 sm:gap-2 h-7 sm:h-9">
-        {/* Full Logo - Desktop */}
         <svg viewBox="0 0 671.29 169.23" className="h-full w-auto hidden sm:block">
           {commonDefs}
           <g id="Icon">
@@ -69,15 +68,14 @@ const Header: React.FC<HeaderProps> = ({
           {textPath}
         </svg>
 
-        {/* Text Only - Mobile */}
         <svg viewBox="250 0 421.29 169.23" className="h-full w-auto block sm:hidden">
           {commonDefs}
           {textPath}
         </svg>
 
         {isPro && (
-          <span className="flex-shrink-0 mb-auto text-[7px] sm:text-[8px] font-black text-white bg-gradient-to-r from-cyan-400 to-indigo-500 px-1 sm:px-1.5 py-0.5 rounded shadow-sm">
-            <Crown size={6} fill="currentColor" className="inline mr-0.5 sm:mr-1" /> {t.proLabel}
+          <span className="flex-shrink-0 mb-auto text-[7px] sm:text-[8px] font-black text-white bg-gradient-to-r from-cyan-400 to-indigo-500 px-1.5 py-0.5 rounded shadow-sm">
+            <Crown size={6} fill="currentColor" className="inline mr-1" /> {t.proLabel}
           </span>
         )}
       </div>
@@ -85,52 +83,66 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-2 sm:px-4 py-2 sm:py-2.5 z-50 flex items-center justify-between shadow-sm shrink-0 sticky top-0 safe-top">
+    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-3 sm:px-4 py-2.5 z-50 flex items-center justify-between shadow-sm shrink-0 sticky top-0 safe-top">
       <div className={`flex items-center gap-1 sm:gap-3 min-w-0 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
         
-        {!isSidebarExpanded && (
+        {user && !isSidebarExpanded && (
           <button 
             onClick={onToggleSidebar}
             className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors flex items-center justify-center"
           >
-            <Menu size={18} className="sm:w-5 sm:h-5" />
+            <Menu size={18} />
           </button>
         )}
 
         <LexiBranding />
       </div>
       
-      <nav className="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-xl border border-slate-200 mx-1 sm:mx-2 shrink-0">
-        <button 
-          onClick={() => setActiveTab('practice')}
-          className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'practice' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          <MessageSquare size={14} className="sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">{t.navPractice}</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('brain')}
-          className={`relative flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'brain' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          <Brain size={14} className="sm:w-4 sm:h-4" />
-          <span className="hidden sm:inline">{t.navBrain}</span>
-          {hasNotifications && activeTab !== 'brain' && (
-            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-red-500 border-2 border-slate-100 shadow-sm"></span>
-          )}
-        </button>
-      </nav>
+      {user && (
+        <nav className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 mx-2 shrink-0">
+          <button 
+            onClick={() => setActiveTab('practice')}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'practice' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <MessageSquare size={14} />
+            <span className="hidden sm:inline">{t.navPractice}</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('brain')}
+            className={`relative flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'brain' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <Brain size={14} />
+            <span className="hidden sm:inline">{t.navBrain}</span>
+          </button>
+        </nav>
+      )}
 
-      <div className={`flex items-center gap-1.5 sm:gap-3 shrink-0 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
-        <div className="relative group">
-           <div className={`flex items-center gap-1 px-1.5 sm:px-3 py-1.5 rounded-full border shadow-sm transition-all ${isPro ? 'bg-cyan-50 border-cyan-100 text-indigo-700' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
-              <Zap size={10} fill="currentColor" className={`sm:w-3 sm:h-3 ${isPro ? 'text-cyan-500' : 'text-blue-600'}`} />
-              <span className="text-[10px] sm:text-sm font-black">{sparks}</span>
-           </div>
-           
-           <button className="absolute -top-1.5 -right-1 bg-white border border-slate-200 rounded-full p-0.5 text-slate-400 hover:text-cyan-600 hover:border-cyan-200 shadow-sm transition-all active:scale-90">
-             <Plus size={8} className="sm:w-[10px] sm:h-[10px]" strokeWidth={3} />
-           </button>
+      <div className={`flex items-center gap-2 sm:gap-4 shrink-0 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-full border border-blue-100 bg-blue-50 text-blue-600 shadow-sm">
+          <Zap size={10} fill="currentColor" />
+          <span className="text-[10px] sm:text-sm font-black">{sparks}</span>
         </div>
+
+        {!user ? (
+          <div className="flex items-center gap-1 sm:gap-3">
+             <button 
+              onClick={onOpenAuth}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-black text-slate-900 border border-slate-200 hover:bg-slate-50 transition-colors"
+             >
+               {t.login}
+             </button>
+             <button 
+              onClick={onOpenAuth}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-black text-white bg-slate-950 hover:bg-slate-800 transition-colors shadow-sm"
+             >
+               {t.signup}
+             </button>
+          </div>
+        ) : (
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-xs sm:text-sm shadow-inner border-2 border-white">
+            {user.full_name?.slice(0, 1) || user.email.slice(0, 1).toUpperCase()}
+          </div>
+        )}
       </div>
     </header>
   );
