@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -19,10 +18,14 @@ const mountApp = () => {
     );
   } catch (error) {
     console.error("Critical error during React mount:", error);
-    // If we crash here, the index.html global error handler will catch it
+    // Explicitly throw so the global window.onerror in index.html catches it
     throw error;
   }
 };
 
-// Run the mount
-mountApp();
+// Ensure we wait for the DOM if the script loads too fast
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountApp);
+} else {
+  mountApp();
+}
