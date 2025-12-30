@@ -11,6 +11,7 @@ import ProModal from './components/ProModal';
 import Sidebar from './components/Sidebar';
 import SettingsModal from './components/SettingsModal';
 import FeedbackModal from './components/FeedbackModal';
+import CoachLessonModal from './components/CoachLessonModal';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'french_mentor_conversations';
@@ -36,6 +37,9 @@ const App: React.FC = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [isPro, setIsPro] = useState<boolean>(() => localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true');
   const [configError, setConfigError] = useState<string | null>(null);
+  
+  // Hoisted state for viewing lessons from missions or archive
+  const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_CONVS);
@@ -305,7 +309,7 @@ const App: React.FC = () => {
         onRenameChat={handleRenameChat}
         onDeleteAllChats={() => setShowDeleteAllConfirm(true)}
         archivedLessons={stats.archivedLessons}
-        onSelectLesson={() => {}}
+        onSelectLesson={(lesson) => setActiveLesson(lesson)}
         isPro={isPro}
         onUpgradeClick={() => setShowProModal(true)}
         isExpanded={isSidebarExpanded}
@@ -366,6 +370,7 @@ const App: React.FC = () => {
               onUpgradeClick={() => setShowProModal(true)} 
               userMessageCount={conversations.reduce((acc, c) => acc + c.messages.filter(m => m.role === 'user').length, 0)}
               onArchiveLesson={handleArchiveLesson}
+              onOpenLesson={(lesson) => setActiveLesson(lesson)}
             />
           )}
         </main>
@@ -392,6 +397,14 @@ const App: React.FC = () => {
       )}
 
       {showFeedbackModal && <FeedbackModal language={systemLang} onClose={() => setShowFeedbackModal(false)} />}
+      
+      {activeLesson && (
+        <CoachLessonModal 
+          lesson={activeLesson} 
+          language={systemLang} 
+          onClose={() => setActiveLesson(null)} 
+        />
+      )}
 
       {/* Delete All Chats Confirmation Modal */}
       {showDeleteAllConfirm && (
