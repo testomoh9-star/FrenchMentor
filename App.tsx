@@ -21,7 +21,7 @@ const STORAGE_KEY_TRANS_LANG = 'french_mentor_trans_lang';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
 const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
 
-const FREE_DAILY_MAX = 10;
+const FREE_DAILY_MAX = 5;
 const PRO_MONTHLY_MAX = 1000;
 const FREE_COST_PER_MSG = 2;
 const PRO_COST_PER_MSG = 1;
