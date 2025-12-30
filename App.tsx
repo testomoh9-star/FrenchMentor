@@ -14,7 +14,7 @@ import SettingsModal from './components/SettingsModal';
 import FeedbackModal from './components/FeedbackModal';
 import CoachLessonModal from './components/CoachLessonModal';
 import AuthModal from './components/AuthModal';
-import { Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'french_mentor_conversations';
 const STORAGE_KEY_CUR_CONV = 'french_mentor_cur_conv';
@@ -24,7 +24,6 @@ const STORAGE_KEY_TRANS_LANG = 'french_mentor_trans_lang';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
 
 const FREE_DAILY_MAX = 8;
-const PRO_MONTHLY_MAX = 1000;
 const FREE_COST_PER_MSG = 2;
 const PRO_COST_PER_MSG = 1;
 
@@ -39,7 +38,6 @@ const App: React.FC = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
 
-  // Check Supabase session on mount
   useEffect(() => {
     supabaseClient.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -108,7 +106,6 @@ const App: React.FC = () => {
   const isRtl = systemLang === 'Arabic';
   const isPro = user?.is_pro;
 
-  // Sync with guest DB
   useEffect(() => {
     getBrowserFingerprint().then(id => {
       setDeviceId(id);
@@ -138,6 +135,7 @@ const App: React.FC = () => {
     setConversations([]);
     setGuestMessages([]);
     setActiveConvId(null);
+    localStorage.removeItem(STORAGE_KEY_CUR_CONV);
     resetChatSession();
   };
 
@@ -147,8 +145,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (user) localStorage.setItem(STORAGE_KEY_CONVS, JSON.stringify(conversations));
+    if (activeConvId) localStorage.setItem(STORAGE_KEY_CUR_CONV, activeConvId);
     scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
-  }, [conversations, guestMessages, activeTab, user]);
+  }, [conversations, guestMessages, activeTab, user, activeConvId]);
 
   useEffect(() => { 
     localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
@@ -159,13 +158,21 @@ const App: React.FC = () => {
 
   const handleNewChat = useCallback(() => {
     if (!user) { setShowAuthModal(true); return; }
+    
+    const existingEmpty = conversations.find(c => c.messages.length === 0);
+    if (existingEmpty) {
+      setActiveConvId(existingEmpty.id);
+      setActiveTab('practice');
+      return;
+    }
+
     const id = Date.now().toString();
     const newConv: Conversation = { id, title: t.newChat, messages: [], timestamp: Date.now() };
     setConversations(prev => [...prev, newConv]);
     setActiveConvId(id);
     setActiveTab('practice');
     resetChatSession();
-  }, [user, t.newChat]);
+  }, [user, t.newChat, conversations]);
 
   const handleSendMessage = useCallback(async (content: string) => {
     const cost = isPro ? PRO_COST_PER_MSG : FREE_COST_PER_MSG;
@@ -175,18 +182,37 @@ const App: React.FC = () => {
     }
 
     const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
-    
+    let finalConvId = activeConvId;
+
     if (!user) {
       setGuestMessages(prev => [...prev, newUserMessage]);
     } else {
-      let targetConvId = activeConvId;
-      if (!targetConvId) {
-        targetConvId = Date.now().toString();
-        const newConv: Conversation = { id: targetConvId, title: content.slice(0, 30) + "...", messages: [], timestamp: Date.now() };
-        setConversations(prev => [...prev, newConv]);
-        setActiveConvId(targetConvId);
+      const activeConv = conversations.find(c => c.id === activeConvId);
+      
+      if (!activeConv || activeConvId === null) {
+        finalConvId = Date.now().toString();
+        const newConv: Conversation = { 
+          id: finalConvId, 
+          title: content.length > 25 ? content.slice(0, 25) + "..." : content, 
+          messages: [newUserMessage], 
+          timestamp: Date.now() 
+        };
+        setConversations(prev => [...prev.filter(c => c.messages.length > 0), newConv]);
+        setActiveConvId(finalConvId);
+      } else {
+        setConversations(prev => prev.map(c => {
+          if (c.id === activeConvId) {
+            const isFirstMsg = c.messages.length === 0;
+            return { 
+              ...c, 
+              messages: [...c.messages, newUserMessage], 
+              title: isFirstMsg ? (content.length > 25 ? content.slice(0, 25) + "..." : content) : c.title,
+              timestamp: Date.now() 
+            };
+          }
+          return c;
+        }));
       }
-      setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, messages: [...c.messages, newUserMessage], timestamp: Date.now() } : c));
     }
 
     setIsLoading(true);
@@ -199,7 +225,7 @@ const App: React.FC = () => {
       if (!user) {
         setGuestMessages(prev => [...prev, newAiMessage]);
       } else {
-        setConversations(prev => prev.map(c => c.id === activeConvId ? { ...c, messages: [...c.messages, newAiMessage] } : c));
+        setConversations(prev => prev.map(c => c.id === finalConvId ? { ...c, messages: [...c.messages, newAiMessage] } : c));
       }
 
       const data: CorrectionResponse = JSON.parse(jsonResponse);
@@ -219,7 +245,14 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [aiLang, translationLang, currentMessages, activeConvId, user, stats.sparks, isPro]);
+  }, [aiLang, translationLang, currentMessages, activeConvId, user, stats.sparks, isPro, conversations]);
+
+  const archiveLesson = (lesson: CoachLesson) => {
+    setStats(prev => ({
+      ...prev,
+      archivedLessons: [lesson, ...prev.archivedLessons]
+    }));
+  };
 
   return (
     <div className={`flex h-full relative font-sans ${isRtl ? 'font-arabic' : ''} bg-slate-50 text-slate-900`}>
@@ -230,9 +263,15 @@ const App: React.FC = () => {
           activeConversationId={activeConvId}
           onNewChat={handleNewChat}
           onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); }}
-          onDeleteChat={(id) => setConversations(prev => prev.filter(c => c.id !== id))}
+          onDeleteChat={(id) => {
+            setConversations(prev => prev.filter(c => c.id !== id));
+            if (activeConvId === id) setActiveConvId(null);
+          }}
           onRenameChat={(id, title) => setConversations(prev => prev.map(c => c.id === id ? {...c, title} : c))}
-          onDeleteAllChats={() => {}}
+          onDeleteAllChats={() => {
+             setConversations([]);
+             setActiveConvId(null);
+          }}
           archivedLessons={stats.archivedLessons}
           onSelectLesson={(lesson) => setActiveLesson(lesson)}
           isPro={!!isPro}
@@ -304,7 +343,7 @@ const App: React.FC = () => {
               isPro={!!isPro} 
               onUpgradeClick={() => setShowProModal(true)} 
               userMessageCount={stats.totalCorrections}
-              onArchiveLesson={() => {}}
+              onArchiveLesson={archiveLesson}
               onOpenLesson={(lesson) => setActiveLesson(lesson)}
             />
           )}

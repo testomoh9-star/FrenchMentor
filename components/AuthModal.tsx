@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Mail, Lock, Chrome, ArrowRight, Loader2, UserPlus, LogIn } from 'lucide-react';
+import { X, Mail, Lock, Chrome, Loader2, UserPlus, LogIn, AlertCircle } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS, User } from '../types';
 import { supabase } from '../services/supabaseService';
 
@@ -15,13 +15,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     if (password.length < 6) {
-      alert("Password must be at least 6 characters.");
+      setErrorMsg("Password must be at least 6 characters.");
       return;
     }
     
@@ -32,7 +34,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
         ? await supabase.auth.signUp(email, password)
         : await supabase.auth.signInWithPassword(email, password);
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes("Email not confirmed")) {
+          setErrorMsg("Account found, but email is not verified. Please check your inbox for a confirmation link.");
+        } else {
+          setErrorMsg(error.message);
+        }
+        setIsLoading(false);
+        return;
+      }
 
       if (data.user) {
         onLogin({
@@ -44,7 +54,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
       }
     } catch (err: any) {
       console.error("Auth error:", err);
-      alert(err.message || (isSignUp ? "Sign up failed." : "Login failed."));
+      setErrorMsg(err.message || (isSignUp ? "Sign up failed." : "Login failed."));
     } finally {
       setIsLoading(false);
     }
@@ -65,6 +75,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
             {isSignUp ? 'Create an account to save progress.' : 'Log in to continue your journey.'}
           </p>
         </div>
+
+        {errorMsg && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-xs font-bold flex items-start gap-3 animate-in slide-in-from-top-2">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <p>{errorMsg}</p>
+          </div>
+        )}
 
         <div className="space-y-3 mb-8">
           <button className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl border-2 border-slate-100 hover:bg-slate-50 transition-all font-bold text-slate-700 active:scale-[0.98]">
@@ -116,7 +133,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
         </form>
 
         <button 
-          onClick={() => setIsSignUp(!isSignUp)}
+          onClick={() => {
+            setIsSignUp(!isSignUp);
+            setErrorMsg(null);
+          }}
           className="w-full mt-6 text-slate-500 text-xs font-bold hover:text-blue-600 transition-colors"
         >
           {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up for free"}
