@@ -25,7 +25,7 @@ const ProModal: React.FC<ProModalProps> = ({ language, onClose, onUpgrade }) => 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
       <div 
-        className={`bg-white w-full max-w-[420px] max-h-[92vh] rounded-[2.5rem] shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 ${isRtl ? 'font-arabic' : ''}`}
+        className={`bg-white w-full max-w-[420px] max-h-[94vh] sm:h-auto rounded-[2.5rem] shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 overflow-hidden ${isRtl ? 'font-arabic' : ''}`}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {/* Close Button - Sticky at top */}
@@ -36,7 +36,7 @@ const ProModal: React.FC<ProModalProps> = ({ language, onClose, onUpgrade }) => 
           <X size={18} />
         </button>
 
-        {/* Scrollable Content Container */}
+        {/* Scrollable Content Container - Scrollbar is now hidden via global CSS */}
         <div className="overflow-y-auto p-5 sm:p-8 flex flex-col items-center scrollbar-hide">
           {/* Header */}
           <div className="text-center mb-5 sm:mb-6 pt-2">
