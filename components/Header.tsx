@@ -57,7 +57,7 @@ const Header: React.FC<HeaderProps> = ({
     );
 
     return (
-      <div className="flex items-center gap-1.5 sm:gap-2 h-7 sm:h-9">
+      <div className="flex items-center gap-1 sm:gap-2 h-7 sm:h-9">
         {/* Full Logo - Desktop */}
         <svg viewBox="0 0 671.29 169.23" className="h-full w-auto hidden sm:block">
           {commonDefs}
@@ -86,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-2 sm:px-4 py-2 sm:py-2.5 z-50 flex items-center justify-between shadow-sm shrink-0 sticky top-0 safe-top">
-      <div className={`flex items-center gap-1.5 sm:gap-3 min-w-0 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className={`flex items-center gap-1 sm:gap-3 min-w-0 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
         
         {!isSidebarExpanded && (
           <button 
@@ -103,17 +103,17 @@ const Header: React.FC<HeaderProps> = ({
       <nav className="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-xl border border-slate-200 mx-1 sm:mx-2 shrink-0">
         <button 
           onClick={() => setActiveTab('practice')}
-          className={`flex items-center gap-1.5 px-2 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'practice' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'practice' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
         >
           <MessageSquare size={14} className="sm:w-4 sm:h-4" />
-          <span className="hidden xs:inline">{t.navPractice}</span>
+          <span className="hidden sm:inline">{t.navPractice}</span>
         </button>
         <button 
           onClick={() => setActiveTab('brain')}
-          className={`relative flex items-center gap-1.5 px-2 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'brain' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`relative flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-lg text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'brain' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
         >
           <Brain size={14} className="sm:w-4 sm:h-4" />
-          <span className="hidden xs:inline">{t.navBrain}</span>
+          <span className="hidden sm:inline">{t.navBrain}</span>
           {hasNotifications && activeTab !== 'brain' && (
             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-red-500 border-2 border-slate-100 shadow-sm"></span>
           )}
