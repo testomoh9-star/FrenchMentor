@@ -1,9 +1,8 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
-// Provided by the user
 const supabaseUrl = 'https://rrbptxpezgxpnuximgzw.supabase.co';
-const supabaseAnonKey = 'sb_publishable_0SvYDWcn5GtjAZdtaWGwuA_xBNlXlrS';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyYnB0eHBlemd4cG51eGltZ3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxMTM0NTYsImV4cCI6MjA4MjY4OTQ1Nn0.SdnSRr0lrwSrbwPnMN7l-gfVPctMQeQb60YgVD6fM38';
 
 export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -56,7 +55,6 @@ export const supabase = {
     }
   },
   
-  // Real Database logic for Guest tracking using the guest_tracking table
   getGuestSparks: async (fingerprint: string) => {
     try {
       const { data, error } = await supabaseClient
@@ -66,7 +64,6 @@ export const supabase = {
         .maybeSingle();
 
       if (!data && !error) {
-        // Not found, create it
         const { data: newData } = await supabaseClient
           .from('guest_tracking')
           .insert([{ device_id: fingerprint, sparks: 8 }])

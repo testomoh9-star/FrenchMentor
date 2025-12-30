@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { BookOpen, ChevronRight, Crown, Lock, PanelLeft, SquarePen, Settings, MessageCircle, LogOut, MoreVertical, Trash2, Edit3, Check } from 'lucide-react';
+import { BookOpen, ChevronRight, Crown, Lock, PanelLeft, SquarePen, Settings, MessageCircle, LogOut, Trash2, Edit3, Trash } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS, Conversation, CoachLesson, User } from '../types';
 
 interface SidebarProps {
@@ -33,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectChat,
   onDeleteChat,
   onRenameChat,
+  onDeleteAllChats,
   archivedLessons,
   onSelectLesson,
   isPro,
@@ -49,7 +50,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isRtl = language === 'Arabic';
   const [editingId, setEditingId] = useState<string | null>(null);
   const [renamingValue, setRenamingValue] = useState('');
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,7 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         `}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
-        {/* Rail Column */}
+        {/* Rail Column (Always visible icons) */}
         <div className="w-16 flex flex-col items-center py-4 border-r border-slate-800/50 shrink-0">
           <button onClick={onToggle} className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-8">
             <PanelLeft size={22} />
@@ -120,13 +120,22 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Expanded Content Column */}
+        {/* Sidebar Content (Expanded) */}
         <div className={`flex-1 flex flex-col min-w-0 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <div className="p-4 border-b border-white/5 flex items-center justify-between">
             <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">{t.recentChats}</span>
+            {conversations.length > 0 && (
+              <button 
+                onClick={onDeleteAllChats}
+                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all group"
+                title={t.deleteAll}
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </div>
           
-          <div className="flex-1 overflow-y-auto p-2 space-y-8 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-2 space-y-10 scrollbar-hide">
             {/* Conversations List */}
             <div className="space-y-1">
               {conversations.slice().reverse().map((conv) => (
@@ -151,32 +160,30 @@ const Sidebar: React.FC<SidebarProps> = ({
                       <h4 className="text-xs font-bold truncate flex-1">{conv.title}</h4>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                         <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingId(conv.id);
-                            setRenamingValue(conv.title);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); setEditingId(conv.id); setRenamingValue(conv.title); }}
                           className="p-1 hover:text-blue-400"
                         >
                           <Edit3 size={12} />
                         </button>
                         <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteChat(conv.id);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); }}
                           className="p-1 hover:text-red-400"
                         >
-                          <Trash2 size={12} />
+                          <Trash size={12} />
                         </button>
                       </div>
                     </button>
                   )}
                 </div>
               ))}
+              {conversations.length === 0 && (
+                <div className="px-3 py-8 text-center border-2 border-dashed border-white/5 rounded-2xl mx-1">
+                  <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest italic">No history</p>
+                </div>
+              )}
             </div>
 
-            {/* Knowledge Library Section */}
+            {/* Knowledge Library */}
             <div className="space-y-4">
               <div className="px-3 flex items-center gap-2">
                 <BookOpen size={14} className="text-white/30" />
@@ -189,12 +196,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <Lock size={18} />
                   </div>
                   <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-tight">Unlock Library with Pro</span>
-                  <button 
-                    onClick={onUpgradeClick}
-                    className="text-[9px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest"
-                  >
-                    Explore Features
-                  </button>
+                  <button onClick={onUpgradeClick} className="text-[9px] font-black text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest">Upgrade</button>
                 </div>
               ) : archivedLessons.length === 0 ? (
                 <div className="px-3 py-8 text-center border-2 border-dashed border-white/5 rounded-2xl">
@@ -206,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       key={lesson.id}
                       onClick={() => onSelectLesson(lesson)}
-                      className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all group"
+                      className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all group text-left"
                     >
                       <div className="flex flex-col items-start min-w-0">
                         <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mb-1">{translateCat(lesson.category)}</span>
@@ -222,7 +224,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="p-4 border-t border-white/5">
             <button onClick={onUpgradeClick} className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white flex items-center justify-between text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/10 active:scale-95 transition-all">
-               <span>{isPro ? 'Pro Active' : 'Join Pro'}</span>
+               <span>{isPro ? 'Pro Member' : 'Join Pro'}</span>
                <Crown size={14} />
             </button>
           </div>

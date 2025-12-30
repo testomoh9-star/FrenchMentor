@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Mail, Lock, Chrome, Loader2, UserPlus, LogIn, AlertCircle } from 'lucide-react';
+import { X, Mail, Lock, Chrome, Loader2, UserPlus, LogIn, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS, User } from '../types';
 import { supabase } from '../services/supabaseService';
 
@@ -13,6 +13,7 @@ interface AuthModalProps {
 const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -44,7 +45,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
         return;
       }
 
-      if (data.user) {
+      // If sign up successful but confirmation required
+      if (isSignUp && data.user && !data.session) {
+        setIsVerificationSent(true);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user && data.session) {
         onLogin({
           id: data.user.id,
           email: data.user.email || email,
@@ -59,6 +67,28 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
       setIsLoading(false);
     }
   };
+
+  if (isVerificationSent) {
+    return (
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className={`bg-white w-full max-w-[400px] rounded-[2.5rem] shadow-2xl overflow-hidden relative p-8 sm:p-10 text-center ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
+          <div className="bg-green-50 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto text-green-600 mb-6 shadow-sm border border-green-100">
+            <CheckCircle2 size={40} />
+          </div>
+          <h2 className="text-3xl font-black text-slate-900 mb-4">Check your inbox</h2>
+          <p className="text-slate-500 font-medium mb-8 leading-relaxed">
+            We've sent a verification link to <span className="text-slate-900 font-black">{email}</span>. Please click it to activate your account.
+          </p>
+          <button 
+            onClick={onClose}
+            className="w-full bg-slate-950 text-white py-4 rounded-2xl font-black text-lg active:scale-95 transition-all"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
@@ -77,9 +107,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
         </div>
 
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-xs font-bold flex items-start gap-3 animate-in slide-in-from-top-2">
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold flex items-start gap-3 animate-in slide-in-from-top-2">
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
-            <p>{errorMsg}</p>
+            <p className="leading-tight">{errorMsg}</p>
           </div>
         )}
 
