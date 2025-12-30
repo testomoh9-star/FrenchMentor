@@ -18,60 +18,57 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onSuggestionClick, language }) 
     return shuffled.slice(0, 4);
   }, [language]);
 
-  // Vibrant, Modern Hero Icon designed to balance with the LexiLift Logo
+  // Refined "French Identity" Hero Icon
   const LexiHeroIcon = () => (
     <div className="relative w-32 h-32 sm:w-40 sm:h-40 mb-10 group flex items-center justify-center">
-      {/* Dynamic Background Glow */}
-      <div className="absolute inset-0 bg-blue-500/10 blur-[60px] rounded-full scale-150 group-hover:bg-blue-400/20 transition-all duration-1000 ease-in-out"></div>
+      {/* Static Background Glow (No animation for snappiness) */}
+      <div className="absolute inset-0 bg-blue-500/5 blur-[60px] rounded-full scale-150"></div>
       
       <svg 
         viewBox="0 0 160 160" 
-        className="relative z-10 w-full h-full drop-shadow-[0_20px_40px_rgba(55,100,200,0.3)] transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-2"
+        className="relative z-10 w-full h-full drop-shadow-[0_15px_30px_rgba(15,23,42,0.15)]"
         fill="none" 
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient id="bubble-grad" x1="20" y1="20" x2="140" y2="140" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="#3377d0"/>
-            <stop offset="1" stopColor="#3762cc"/>
+          <linearGradient id="french-bubble-grad" x1="20" y1="20" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stopColor="#0055A4"/> {/* Official French Blue */}
+            <stop offset="1" stopColor="#003d7a"/>
           </linearGradient>
-          <filter id="inner-glow">
-            <feFlood floodColor="white" floodOpacity="0.25" result="color"/>
-            <feComposite in="color" in2="SourceGraphic" operator="in" result="glow"/>
-            <feGaussianBlur in="glow" stdDeviation="4" result="blur"/>
-            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+          
+          <filter id="glass-shine">
+            <feFlood floodColor="white" floodOpacity="0.2" result="light"/>
+            <feComposite in="light" in2="SourceGraphic" operator="in"/>
+            <feGaussianBlur stdDeviation="2"/>
           </filter>
         </defs>
 
-        {/* The "Vibrant" Message Bubble */}
+        {/* Main Chat Bubble */}
         <rect 
-          x="20" y="20" width="120" height="120" rx="40" 
-          fill="url(#bubble-grad)"
-          filter="url(#inner-glow)"
+          x="25" y="25" width="110" height="110" rx="36" 
+          fill="url(#french-bubble-grad)"
         />
         
-        {/* Chat Tail - Stylized */}
+        {/* Chat Tail */}
         <path 
-          d="M60 140L40 155V135" 
-          fill="#3762cc"
+          d="M60 135L45 150V135" 
+          fill="#003d7a"
         />
 
-        {/* Modern Plus Sign with depth */}
-        <g stroke="white" strokeWidth="12" strokeLinecap="round">
+        {/* Minimal Plus / "Lift" Symbol */}
+        <g stroke="white" strokeWidth="10" strokeLinecap="round">
           <line x1="80" y1="55" x2="80" y2="105" />
           <line x1="55" y1="80" x2="105" y2="80" />
         </g>
-
-        {/* Accent Sparkles - Matching the LexiLift 'AI' feel */}
-        <circle cx="130" cy="35" r="5" fill="#3296ce" className="animate-pulse" />
-        <circle cx="25" cy="110" r="3" fill="#3476d0" />
       </svg>
 
-      {/* Outer Floating Accents */}
-      <div className="absolute -top-2 -right-2 bg-white p-2.5 rounded-2xl shadow-lg border border-slate-100 animate-bounce delay-150">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3377d0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-        </svg>
+      {/* Premium French Badge (The Identity Marker) */}
+      <div className="absolute top-0 right-0 bg-white p-1.5 rounded-2xl shadow-xl border border-slate-100 flex items-center justify-center transform translate-x-1 translate-y--1">
+        <div className="flex w-10 h-10 rounded-xl overflow-hidden shadow-inner border border-slate-50">
+           <div className="flex-1 bg-[#0055A4]"></div> {/* Blue */}
+           <div className="flex-1 bg-white"></div>    {/* White */}
+           <div className="flex-1 bg-[#EF4135]"></div> {/* Red */}
+        </div>
       </div>
     </div>
   );
@@ -82,7 +79,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onSuggestionClick, language }) 
       <LexiHeroIcon />
 
       <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mb-3 tracking-tight">{t.subtitle}</h2>
-      <p className="text-slate-500 max-w-lg mb-10 sm:mb-12 text-base sm:text-xl font-medium leading-relaxed">
+      <p className="text-slate-500 max-w-lg mb-10 sm:mb-12 text-base sm:text-lg font-medium leading-relaxed opacity-80">
         {t.description}
       </p>
 
