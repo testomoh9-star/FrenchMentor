@@ -1,5 +1,6 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { Conversation } from '../types';
 
 const supabaseUrl = 'https://rrbptxpezgxpnuximgzw.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyYnB0eHBlemd4cG51eGltZ3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxMTM0NTYsImV4cCI6MjA4MjY4OTQ1Nn0.SdnSRr0lrwSrbwPnMN7l-gfVPctMQeQb60YgVD6fM38';
@@ -36,16 +37,10 @@ export const getBrowserFingerprint = async (): Promise<string> => {
 export const supabase = {
   auth: {
     signInWithPassword: async (email: string, password?: string) => {
-      return await supabaseClient.auth.signInWithPassword({
-        email,
-        password: password || '',
-      });
+      return await supabaseClient.auth.signInWithPassword({ email, password: password || '' });
     },
     signUp: async (email: string, password?: string) => {
-      return await supabaseClient.auth.signUp({
-        email,
-        password: password || '',
-      });
+      return await supabaseClient.auth.signUp({ email, password: password || '' });
     },
     signOut: async () => {
       return await supabaseClient.auth.signOut();
@@ -93,29 +88,21 @@ export const supabase = {
         .eq('id', userId)
         .maybeSingle();
       
-      if (error) {
-        console.error("Supabase error fetching profile:", error.message, error.details);
-        throw error;
-      }
+      if (error) throw error;
 
       if (!data) {
-        // Create profile with inherited sparks or default 8
         const { data: newProfile, error: insertError } = await supabaseClient
           .from('profiles')
           .insert([{ id: userId, sparks: initialSparks ?? 8, is_pro: false }])
           .select()
           .maybeSingle();
         
-        if (insertError) {
-          console.error("Supabase error creating profile:", insertError.message, insertError.details);
-          throw insertError;
-        }
-        return newProfile || { id: userId, sparks: initialSparks ?? 8, is_pro: false };
+        if (insertError) throw insertError;
+        return newProfile;
       }
       return data;
     } catch (e: any) {
-      console.error("Critical error in getProfile:", e?.message || e);
-      // Return a basic profile object to prevent app hang if DB query fails but auth exists
+      console.error("Profile error:", e);
       return { id: userId, sparks: initialSparks ?? 8, is_pro: false };
     }
   },
@@ -125,5 +112,52 @@ export const supabase = {
       .from('profiles')
       .update({ sparks })
       .eq('id', userId);
+  },
+
+  // NEW: PERSISTENT CONVERSATIONS
+  getConversations: async (userId: string): Promise<Conversation[]> => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('conversations')
+        .select('*')
+        .eq('user_id', userId)
+        .order('timestamp', { ascending: false });
+      
+      if (error) return [];
+      return data.map(item => ({
+        id: item.id,
+        title: item.title,
+        messages: item.messages || [],
+        timestamp: item.timestamp
+      }));
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveConversations: async (userId: string, conversations: Conversation[]) => {
+    try {
+      // Upsert pattern: Delete old, insert new for this user
+      // In a production app with huge histories, you'd only sync changed ones.
+      // For this MVP, we replace the set for simplicity and data integrity.
+      await supabaseClient
+        .from('conversations')
+        .delete()
+        .eq('user_id', userId);
+
+      const payload = conversations.map(c => ({
+        user_id: userId,
+        id: c.id,
+        title: c.title,
+        messages: c.messages,
+        timestamp: c.timestamp
+      }));
+
+      if (payload.length > 0) {
+        await supabaseClient.from('conversations').insert(payload);
+      }
+    } catch (e) {
+      console.error("Save conversations error:", e);
+    }
   }
 };

@@ -41,6 +41,7 @@ const App: React.FC = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
 
+  // Stats - Internal local state
   const [stats, setStats] = useState<BrainStats>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_STATS);
     try { 
@@ -51,56 +52,13 @@ const App: React.FC = () => {
     }
   });
 
-  // Keep a ref of current sparks to avoid stale closures in auth listener
-  // and to avoid putting stats.sparks in the useEffect dependency array which causes loops
+  // Flag to prevent guest-mode sync from overwriting cloud data during transitions
+  const isTransitioning = useRef(false);
   const sparksRef = useRef(stats.sparks);
+  
   useEffect(() => {
     sparksRef.current = stats.sparks;
   }, [stats.sparks]);
-
-  // Unified Auth & Initial State Logic
-  useEffect(() => {
-    // Initial device ID and guest sparks check
-    getBrowserFingerprint().then(id => {
-      setDeviceId(id);
-      supabaseClient.auth.getSession().then(({ data: { session } }) => {
-        if (!session?.user) {
-          supabase.getGuestSparks(id).then(sparks => {
-            setStats(prev => ({ ...prev, sparks }));
-          });
-        }
-      });
-    });
-
-    // Auth state listener
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        // Just logged in or session restored
-        const currentSparksInState = sparksRef.current;
-        supabase.getProfile(session.user.id, currentSparksInState).then(profile => {
-          if (profile) {
-            setUser({
-              id: session.user.id,
-              email: session.user.email || '',
-              full_name: profile.full_name || session.user.email?.split('@')[0],
-              is_pro: profile.is_pro || false
-            });
-            setStats(prev => ({ ...prev, sparks: profile.sparks ?? prev.sparks }));
-          }
-        });
-      } else {
-        // Logged out
-        setUser(null);
-        getBrowserFingerprint().then(id => {
-          supabase.getGuestSparks(id).then(guestSparks => {
-            setStats(prev => ({ ...prev, sparks: guestSparks }));
-          });
-        });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []); // Run only once on mount
 
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_CONVS);
@@ -109,6 +67,99 @@ const App: React.FC = () => {
 
   const [guestMessages, setGuestMessages] = useState<Message[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(localStorage.getItem(STORAGE_KEY_CUR_CONV));
+
+  // --- AUTH & DATA SYNC LOGIC ---
+
+  useEffect(() => {
+    // 1. Initial Fingerprint Setup
+    getBrowserFingerprint().then(id => {
+      setDeviceId(id);
+      
+      // 2. Check current session
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) {
+          // GUEST MODE: Fetch device-specific sparks
+          supabase.getGuestSparks(id).then(sparks => {
+            setStats(prev => ({ ...prev, sparks }));
+          });
+        } else {
+          // USER MODE: Initial load handled by onAuthStateChange
+        }
+      });
+    });
+
+    // 3. Persistent Auth Listener
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        // --- LOGIN DETECTED ---
+        isTransitioning.current = true;
+        
+        // Capture sparks to potentially migrate if it's a new profile
+        const guestSparksCapture = sparksRef.current;
+        
+        // Fetch Cloud Data
+        const [profile, cloudConvs] = await Promise.all([
+          supabase.getProfile(session.user.id, guestSparksCapture),
+          supabase.getConversations(session.user.id)
+        ]);
+
+        if (profile) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            full_name: profile.full_name || session.user.email?.split('@')[0],
+            is_pro: profile.is_pro || false
+          });
+          
+          setStats(prev => ({ ...prev, sparks: profile.sparks }));
+          setConversations(cloudConvs);
+          
+          if (cloudConvs.length > 0) {
+            setActiveConvId(cloudConvs[0].id);
+          }
+        }
+        
+        // Finalize transition
+        setTimeout(() => { isTransitioning.current = false; }, 500);
+      } else {
+        // --- LOGOUT DETECTED ---
+        isTransitioning.current = true;
+        setUser(null);
+        setConversations([]);
+        setGuestMessages([]);
+        setActiveConvId(null);
+        
+        const id = await getBrowserFingerprint();
+        const guestSparks = await supabase.getGuestSparks(id);
+        setStats(prev => ({ ...prev, sparks: guestSparks }));
+        
+        setTimeout(() => { isTransitioning.current = false; }, 500);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Sync to Cloud (Throttle to changes only)
+  useEffect(() => {
+    if (isTransitioning.current) return;
+
+    localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
+    
+    if (user) {
+      supabase.updateProfileSparks(user.id, stats.sparks);
+      // We sync conversations on specific events (send message) rather than every tiny render for efficiency
+    } else if (deviceId) {
+      supabase.updateGuestSparks(deviceId, stats.sparks);
+    }
+  }, [stats.sparks, user, deviceId]);
+
+  // Sync Conversations to Cloud only on message changes
+  useEffect(() => {
+    if (user && !isTransitioning.current && conversations.length > 0) {
+      supabase.saveConversations(user.id, conversations);
+    }
+  }, [conversations, user]);
 
   const [systemLang, setSystemLang] = useState<SystemLanguage>(() => {
     return (localStorage.getItem(STORAGE_KEY_SYSTEM_LANG) as SystemLanguage) || 'French';
@@ -135,18 +186,13 @@ const App: React.FC = () => {
   }, [user, activeConvId, conversations, guestMessages]);
 
   const handleLogin = (newUser: User) => {
-    setUser(newUser);
-    setShowAuthModal(false);
-    resetChatSession();
+    // Handled by onAuthStateChange listener for better data integrity
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setConversations([]);
-    setGuestMessages([]);
-    setActiveConvId(null);
     localStorage.removeItem(STORAGE_KEY_CUR_CONV);
+    localStorage.removeItem(STORAGE_KEY_CONVS);
     resetChatSession();
   };
 
@@ -160,29 +206,14 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(STORAGE_KEY_TRANS_LANG, translationLang); }, [translationLang]);
 
   useEffect(() => {
-    if (user) localStorage.setItem(STORAGE_KEY_CONVS, JSON.stringify(conversations));
+    if (!user) localStorage.setItem(STORAGE_KEY_CONVS, JSON.stringify(conversations));
     if (activeConvId) localStorage.setItem(STORAGE_KEY_CUR_CONV, activeConvId);
     scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
   }, [conversations, guestMessages, activeTab, user, activeConvId]);
 
-  // Sync Sparks to correct record
-  useEffect(() => { 
-    localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
-    if (user) {
-      supabase.updateProfileSparks(user.id, stats.sparks);
-    } else if (deviceId) {
-      supabase.updateGuestSparks(deviceId, stats.sparks);
-    }
-  }, [stats.sparks, user, deviceId]);
-
   const handleNewChat = useCallback(() => {
     if (!user) { openAuth('signup'); return; }
     
-    // Check if current view is already empty
-    const currentConv = conversations.find(c => c.id === activeConvId);
-    if (currentConv && currentConv.messages.length === 0) return;
-
-    // Look for ANY existing empty chat and reuse it
     const existingEmpty = conversations.find(c => c.messages.length === 0);
     if (existingEmpty) {
       setActiveConvId(existingEmpty.id);
@@ -214,26 +245,14 @@ const App: React.FC = () => {
       const activeConv = conversations.find(c => c.id === activeConvId);
       
       if (!activeConv) {
-        // Fallback: Use existing empty or create new
-        const existingEmpty = conversations.find(c => c.messages.length === 0);
-        if (existingEmpty) {
-          finalConvId = existingEmpty.id;
-          setConversations(prev => prev.map(c => c.id === finalConvId ? { 
-            ...c, 
-            messages: [newUserMessage], 
-            title: content.slice(0, 25), 
-            timestamp: Date.now() 
-          } : c));
-        } else {
-          finalConvId = Date.now().toString();
-          const newConv: Conversation = { 
-            id: finalConvId, 
-            title: content.slice(0, 25), 
-            messages: [newUserMessage], 
-            timestamp: Date.now() 
-          };
-          setConversations(prev => [...prev.filter(c => c.messages.length > 0), newConv]);
-        }
+        finalConvId = Date.now().toString();
+        const newConv: Conversation = { 
+          id: finalConvId, 
+          title: content.slice(0, 25), 
+          messages: [newUserMessage], 
+          timestamp: Date.now() 
+        };
+        setConversations(prev => [newConv, ...prev.filter(c => c.messages.length > 0)]);
         setActiveConvId(finalConvId);
       } else {
         setConversations(prev => prev.map(c => {
@@ -261,7 +280,7 @@ const App: React.FC = () => {
       if (!user) {
         setGuestMessages(prev => [...prev, newAiMessage]);
       } else {
-        setConversations(prev => prev.map(c => c.id === finalConvId ? { ...c, messages: [...c.messages, newAiMessage] } : c));
+        setConversations(prev => prev.map(c => c.id === (finalConvId || activeConvId) ? { ...c, messages: [...c.messages, newAiMessage] } : c));
       }
 
       const data: CorrectionResponse = JSON.parse(jsonResponse);
@@ -291,6 +310,7 @@ const App: React.FC = () => {
   };
 
   const handleClearHistory = () => {
+    if (user) supabase.saveConversations(user.id, []);
     setConversations([]);
     setActiveConvId(null);
     localStorage.removeItem(STORAGE_KEY_CUR_CONV);
@@ -356,7 +376,8 @@ const App: React.FC = () => {
           onNewChat={handleNewChat}
           onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); }}
           onDeleteChat={(id) => {
-            setConversations(prev => prev.filter(c => c.id !== id));
+            const filtered = conversations.filter(c => c.id !== id);
+            setConversations(filtered);
             if (activeConvId === id) setActiveConvId(null);
           }}
           onRenameChat={(id, title) => setConversations(prev => prev.map(c => c.id === id ? {...c, title} : c))}
