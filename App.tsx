@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Message, SupportLanguage, SystemLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation, User } from './types';
 import { sendMessageToGemini, resetChatSession, generateDeepDive } from './services/geminiService';
-import { getBrowserFingerprint, supabase, supabaseClient } from './services/supabaseService';
+import { supabase, supabaseClient } from './services/supabaseService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
 import InputArea from './components/InputArea';
@@ -17,9 +17,10 @@ import AuthModal from './components/AuthModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import { Loader2, ShieldAlert, CloudRain } from 'lucide-react';
 
-const STORAGE_KEY_SYSTEM_LANG = 'lexilift_system_lang';
-const STORAGE_KEY_AI_LANG = 'lexilift_ai_lang';
-const STORAGE_KEY_TRANS_LANG = 'lexilift_trans_lang';
+// Storage Keys
+const STORAGE_KEY_SETTINGS = 'lexilift_user_settings';
+const STORAGE_KEY_GUEST_STATS = 'lexilift_guest_stats';
+const STORAGE_KEY_GUEST_CONVS = 'lexilift_guest_conversations';
 
 const FREE_COST_PER_MSG = 2;
 const PRO_COST_PER_MSG = 1;
@@ -27,9 +28,9 @@ const PRO_COST_PER_MSG = 1;
 const App: React.FC = () => {
   // --- CORE STATE ---
   const [user, setUser] = useState<User | null>(null);
-  const [deviceId, setDeviceId] = useState<string>('');
   const [isDataLoading, setIsDataLoading] = useState(true);
   
+  // Stats (Sparks, History, etc.)
   const [stats, setStats] = useState<BrainStats>({
     totalCorrections: 0,
     categories: {},
@@ -39,8 +40,8 @@ const App: React.FC = () => {
     archivedLessons: []
   });
 
+  // Chat Data
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [guestMessages, setGuestMessages] = useState<Message[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
 
   // --- UI STATE ---
@@ -55,118 +56,105 @@ const App: React.FC = () => {
   const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [systemLang, setSystemLang] = useState<SystemLanguage>(() => (localStorage.getItem(STORAGE_KEY_SYSTEM_LANG) as SystemLanguage) || 'French');
-  const [aiLang, setAiLang] = useState<SupportLanguage>(() => (localStorage.getItem(STORAGE_KEY_AI_LANG) as SupportLanguage) || 'French');
-  const [translationLang, setTranslationLang] = useState<SupportLanguage>(() => (localStorage.getItem(STORAGE_KEY_TRANS_LANG) as SupportLanguage) || 'French');
+  // Settings
+  const [systemLang, setSystemLang] = useState<SystemLanguage>('English');
+  const [aiLang, setAiLang] = useState<SupportLanguage>('English');
+  const [translationLang, setTranslationLang] = useState<SupportLanguage>('English');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const t = UI_TRANSLATIONS[systemLang];
   const isRtl = systemLang === 'Arabic';
   const isPro = user?.is_pro;
 
-  // --- AUTH SESSION MANAGEMENT ---
+  // --- SESSION HANDLERS ---
 
-  const loadUserData = async (userId: string, email: string) => {
+  const initGuestSession = () => {
+    const savedStats = localStorage.getItem(STORAGE_KEY_GUEST_STATS);
+    const savedConvs = localStorage.getItem(STORAGE_KEY_GUEST_CONVS);
+    
+    if (savedStats) setStats(JSON.parse(savedStats));
+    if (savedConvs) setConversations(JSON.parse(savedConvs));
+    
+    setUser(null);
+    setIsDataLoading(false);
+  };
+
+  const initUserSession = async (userId: string, email: string) => {
     setIsDataLoading(true);
-    // Clear potentially stale data immediately
-    setConversations([]);
-    setGuestMessages([]);
-    setActiveConvId(null);
-
     try {
       const [profile, cloudConvs] = await Promise.all([
         supabase.getProfile(userId),
         supabase.fetchConversations(userId)
       ]);
 
-      if (profile) {
-        setUser({
-          id: userId,
-          email: email,
-          full_name: profile.full_name || email.split('@')[0],
-          is_pro: profile.is_pro || false
-        });
-        setStats(prev => ({ ...prev, sparks: profile.sparks ?? 8 }));
-        setConversations(cloudConvs || []);
-        if (cloudConvs && cloudConvs.length > 0) setActiveConvId(cloudConvs[0].id);
-      }
-    } catch (e) {
-      console.error("Failed to load user data:", e);
-    } finally {
-      setIsDataLoading(false);
-    }
-  };
-
-  const loadGuestData = async (fId: string) => {
-    setIsDataLoading(true);
-    try {
-      const data = await supabase.getGuestData(fId);
-      // Failsafe check to prevent 'Cannot read properties of null'
-      const sparks = data ? (data.sparks ?? 8) : 8;
+      setUser({
+        id: userId,
+        email: email,
+        full_name: profile.full_name || email.split('@')[0],
+        is_pro: profile.is_pro || false
+      });
       
-      setStats(prev => ({ ...prev, sparks }));
-      setConversations([]);
-      setGuestMessages([]);
-      setActiveConvId(null);
-      setUser(null);
+      setStats(prev => ({ ...prev, sparks: profile.sparks ?? 8 }));
+      setConversations(cloudConvs || []);
+      if (cloudConvs && cloudConvs.length > 0) setActiveConvId(cloudConvs[0].id);
     } catch (e) {
-      console.error("Failed to load guest data:", e);
-      setStats(prev => ({ ...prev, sparks: 8 }));
+      console.error("Session init failed:", e);
     } finally {
       setIsDataLoading(false);
     }
   };
 
   useEffect(() => {
-    const init = async () => {
-      const fId = await getBrowserFingerprint();
-      setDeviceId(fId);
+    // 1. Load basic UI settings (independent of auth)
+    const settings = localStorage.getItem(STORAGE_KEY_SETTINGS);
+    if (settings) {
+      const s = JSON.parse(settings);
+      setSystemLang(s.systemLang || 'English');
+      setAiLang(s.aiLang || 'English');
+      setTranslationLang(s.translationLang || 'English');
+    }
 
+    // 2. Initialize Auth
+    const setupAuth = async () => {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session?.user) {
-        await loadUserData(session.user.id, session.user.email || '');
+        await initUserSession(session.user.id, session.user.email || '');
       } else {
-        await loadGuestData(fId);
+        initGuestSession();
       }
 
-      // Explicit Auth Change Handling
-      const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      supabaseClient.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          await loadUserData(session.user.id, session.user.email || '');
+          await initUserSession(session.user.id, session.user.email || '');
         } else if (event === 'SIGNED_OUT') {
-          const freshFid = await getBrowserFingerprint();
-          await loadGuestData(freshFid);
+          // Clear memory and go back to guest
+          setConversations([]);
+          setActiveConvId(null);
+          initGuestSession();
         }
       });
-
-      return () => subscription.unsubscribe();
     };
-    init();
+    
+    setupAuth();
   }, []);
 
   // --- PERSISTENCE ---
 
   useEffect(() => {
-    // Only sync back to DB if loading is finished to avoid overwriting cloud with defaults
     if (isDataLoading) return;
 
     if (user) {
-      supabase.updateSparks(user.id, stats.sparks, true);
-    } else if (deviceId) {
-      supabase.updateSparks(deviceId, stats.sparks, false);
+      supabase.updateSparks(user.id, stats.sparks);
+      supabase.syncConversations(user.id, conversations);
+    } else {
+      localStorage.setItem(STORAGE_KEY_GUEST_STATS, JSON.stringify(stats));
+      localStorage.setItem(STORAGE_KEY_GUEST_CONVS, JSON.stringify(conversations));
     }
-  }, [stats.sparks, user, deviceId, isDataLoading]);
+  }, [stats, conversations, user, isDataLoading]);
 
   useEffect(() => {
-    // Only sync conversations to cloud if logged in and not currently loading profile
-    if (user && !isDataLoading) {
-      supabase.syncConversations(user.id, conversations);
-    }
-  }, [conversations, user, isDataLoading]);
-
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_AI_LANG, aiLang); }, [aiLang]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY_TRANS_LANG, translationLang); }, [translationLang]);
+    localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({ systemLang, aiLang, translationLang }));
+  }, [systemLang, aiLang, translationLang]);
 
   // --- ACTIONS ---
 
@@ -179,38 +167,31 @@ const App: React.FC = () => {
 
     const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
     
-    if (!user) {
-      setGuestMessages(prev => [...prev, newUserMessage]);
-    } else {
-      setConversations(prev => {
-        const active = prev.find(c => c.id === activeConvId);
-        if (!active) {
-          const newId = Date.now().toString();
-          setActiveConvId(newId);
-          return [{ id: newId, title: content.slice(0, 25), messages: [newUserMessage], timestamp: Date.now() }, ...prev];
-        }
-        return prev.map(c => c.id === activeConvId ? { 
-          ...c, 
-          messages: [...c.messages, newUserMessage],
-          timestamp: Date.now(),
-          title: c.messages.length === 0 ? content.slice(0, 25) : c.title
-        } : c);
-      });
-    }
+    // UI Update (Optimistic)
+    setConversations(prev => {
+      const active = prev.find(c => c.id === activeConvId);
+      if (!active) {
+        const newId = Date.now().toString();
+        setActiveConvId(newId);
+        return [{ id: newId, title: content.slice(0, 25), messages: [newUserMessage], timestamp: Date.now() }, ...prev];
+      }
+      return prev.map(c => c.id === activeConvId ? { 
+        ...c, 
+        messages: [...c.messages, newUserMessage],
+        timestamp: Date.now(),
+        title: c.messages.length === 0 ? content.slice(0, 25) : c.title
+      } : c);
+    });
 
     setIsLoading(true);
     setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - cost) }));
 
     try {
-      const context = !user ? guestMessages : conversations.find(c => c.id === activeConvId)?.messages || [];
-      const jsonResponse = await sendMessageToGemini(content, aiLang, translationLang, context);
+      const currentMessages = conversations.find(c => c.id === (activeConvId || ''))?.messages || [];
+      const jsonResponse = await sendMessageToGemini(content, aiLang, translationLang, currentMessages);
       const newAiMessage: Message = { id: (Date.now() + 1).toString(), role: 'model', content: jsonResponse, timestamp: Date.now() };
       
-      if (!user) {
-        setGuestMessages(prev => [...prev, newAiMessage]);
-      } else {
-        setConversations(prev => prev.map(c => c.id === activeConvId ? { ...c, messages: [...c.messages, newAiMessage] } : c));
-      }
+      setConversations(prev => prev.map(c => c.id === (activeConvId || '') ? { ...c, messages: [...c.messages, newAiMessage] } : c));
 
       const data: CorrectionResponse = JSON.parse(jsonResponse);
       if (data.corrections?.length > 0) {
@@ -229,35 +210,25 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [aiLang, translationLang, activeConvId, user, stats.sparks, isPro, conversations, guestMessages]);
+  }, [aiLang, translationLang, activeConvId, user, stats.sparks, isPro, conversations]);
 
   const handleNewChat = () => {
-    if (!user) { openAuth('signup'); return; }
     setActiveConvId(null);
     setActiveTab('practice');
     resetChatSession();
   };
 
   const currentMessages = useMemo(() => {
-    if (!user) return guestMessages;
     return conversations.find(c => c.id === activeConvId)?.messages || [];
-  }, [user, activeConvId, conversations, guestMessages]);
-
-  const openAuth = (mode: 'login' | 'signup') => {
-    setAuthModalMode(mode);
-    setShowAuthModal(true);
-  };
+  }, [activeConvId, conversations]);
 
   if (isDataLoading) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-slate-950 text-white gap-6">
-        <div className="relative">
-          <Loader2 className="animate-spin text-cyan-400" size={48} />
-          <CloudRain className="absolute inset-0 m-auto text-indigo-400 opacity-50" size={20} />
-        </div>
-        <div className="text-center space-y-2">
-          <h2 className="text-xl font-black tracking-widest uppercase">Initializing Session</h2>
-          <p className="text-slate-500 text-xs font-bold">Synchronizing your linguistic profile...</p>
+        <Loader2 className="animate-spin text-cyan-400" size={48} />
+        <div className="text-center">
+          <h2 className="text-xl font-black uppercase tracking-widest">Initializing</h2>
+          <p className="text-slate-500 text-xs font-bold">Synchronizing session...</p>
         </div>
       </div>
     );
@@ -293,7 +264,7 @@ const App: React.FC = () => {
         <Header 
           language={systemLang} sparks={stats.sparks}
           activeTab={activeTab} setActiveTab={setActiveTab}
-          user={user} onOpenAuth={openAuth}
+          user={user} onOpenAuth={(mode) => { setAuthModalMode(mode); setShowAuthModal(true); }}
           isSidebarExpanded={isSidebarExpanded} onToggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)}
         />
 
@@ -302,7 +273,7 @@ const App: React.FC = () => {
             <div className="bg-orange-50 border-b border-orange-100 p-2 flex items-center justify-center gap-2 text-[10px] sm:text-xs font-bold text-orange-700">
                <ShieldAlert size={14} />
                <span>{t.guestModeDesc}</span>
-               <button onClick={() => openAuth('signup')} className="underline ml-2">Sign up now</button>
+               <button onClick={() => setShowAuthModal(true)} className="underline ml-2">Sign up</button>
             </div>
           )}
 
@@ -318,7 +289,7 @@ const App: React.FC = () => {
                     <MessageBubble 
                       key={msg.id} message={msg} 
                       language={systemLang} translationLanguage={translationLang}
-                      isPro={!!isPro} onLockClick={() => user ? setShowProModal(true) : openAuth('signup')}
+                      isPro={!!isPro} onLockClick={() => user ? setShowProModal(true) : setShowAuthModal(true)}
                       onDeepDive={generateDeepDive}
                     />
                   ))}
