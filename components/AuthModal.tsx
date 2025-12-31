@@ -1,24 +1,30 @@
 
-import React, { useState } from 'react';
-import { X, Mail, Lock, Chrome, Loader2, UserPlus, LogIn, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Mail, Lock, Loader2, UserPlus, LogIn, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS, User } from '../types';
 import { supabase } from '../services/supabaseService';
 
 interface AuthModalProps {
   language: SystemLanguage;
+  initialMode?: 'login' | 'signup';
   onClose: () => void;
   onLogin: (user: User) => void;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ language, initialMode = 'login', onClose, onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(initialMode === 'signup');
   const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
+
+  // Sync mode if initialMode changes while component is mounted
+  useEffect(() => {
+    setIsSignUp(initialMode === 'signup');
+  }, [initialMode]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +51,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
         return;
       }
 
-      // If sign up successful but confirmation required
       if (isSignUp && data.user && !data.session) {
         setIsVerificationSent(true);
         setIsLoading(false);
@@ -61,7 +66,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
         });
       }
     } catch (err: any) {
-      console.error("Auth error:", err);
       setErrorMsg(err.message || (isSignUp ? "Sign up failed." : "Login failed."));
     } finally {
       setIsLoading(false);
@@ -81,7 +85,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
           </p>
           <button 
             onClick={onClose}
-            className="w-full bg-slate-950 text-white py-4 rounded-2xl font-black text-lg active:scale-95 transition-all"
+            className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 text-white py-4 rounded-2xl font-black text-lg active:scale-95 transition-all shadow-lg shadow-indigo-100"
           >
             Got it
           </button>
@@ -97,7 +101,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
           <X size={20} />
         </button>
 
-        <div className="text-center mb-8">
+        <div className="text-center mb-10">
           <h2 className="text-3xl font-black text-slate-900 mb-2">
             {isSignUp ? 'Join LexiLift' : 'Welcome Back'}
           </h2>
@@ -112,18 +116,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
             <p className="leading-tight">{errorMsg}</p>
           </div>
         )}
-
-        <div className="space-y-3 mb-8">
-          <button className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl border-2 border-slate-100 hover:bg-slate-50 transition-all font-bold text-slate-700 active:scale-[0.98]">
-            <Chrome size={20} className="text-blue-500" />
-            Continue with Google
-          </button>
-        </div>
-
-        <div className="relative mb-8">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-          <div className="relative flex justify-center text-[10px] uppercase font-black text-slate-300 px-2 bg-white w-fit mx-auto">Or</div>
-        </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div className="space-y-2">
@@ -154,7 +146,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
           <button 
             type="submit"
             disabled={isLoading}
-            className="w-full bg-slate-950 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:from-cyan-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 mt-2"
           >
             {isLoading ? <Loader2 size={20} className="animate-spin" /> : (
               <>{isSignUp ? <UserPlus size={20} /> : <LogIn size={20} />} {isSignUp ? 'Sign Up' : 'Log In'}</>
@@ -167,13 +159,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, onClose, onLogin }) => 
             setIsSignUp(!isSignUp);
             setErrorMsg(null);
           }}
-          className="w-full mt-6 text-slate-500 text-xs font-bold hover:text-blue-600 transition-colors"
+          className="w-full mt-8 text-slate-500 text-xs font-bold hover:text-blue-600 transition-colors"
         >
           {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up for free"}
         </button>
 
-        <p className="text-center mt-8 text-[10px] text-slate-400 font-medium leading-relaxed">
-          By continuing, you agree to LexiLift's Terms of Service and Privacy Policy.
+        <p className="text-center mt-10 text-[10px] text-slate-400 font-medium leading-relaxed">
+          By continuing, you agree to LexiLift's <span className="text-blue-500">Terms of Service</span> and <span className="text-blue-500">Privacy Policy</span>.
         </p>
       </div>
     </div>

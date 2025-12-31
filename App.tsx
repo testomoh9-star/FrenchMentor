@@ -34,44 +34,73 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
   const [showProModal, setShowProModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
 
-  // Initialize Supabase Auth and Profile
+  const [stats, setStats] = useState<BrainStats>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_STATS);
+    try { 
+      const parsed = saved ? JSON.parse(saved) : null;
+      return parsed || { totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
+    } catch (e) { 
+      return { totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
+    }
+  });
+
+  // Keep a ref of current sparks to avoid stale closures in auth listener
+  // and to avoid putting stats.sparks in the useEffect dependency array which causes loops
+  const sparksRef = useRef(stats.sparks);
   useEffect(() => {
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        supabase.getProfile(session.user.id).then(profile => {
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            full_name: profile?.full_name || session.user.email?.split('@')[0],
-            is_pro: profile?.is_pro || false
+    sparksRef.current = stats.sparks;
+  }, [stats.sparks]);
+
+  // Unified Auth & Initial State Logic
+  useEffect(() => {
+    // Initial device ID and guest sparks check
+    getBrowserFingerprint().then(id => {
+      setDeviceId(id);
+      supabaseClient.auth.getSession().then(({ data: { session } }) => {
+        if (!session?.user) {
+          supabase.getGuestSparks(id).then(sparks => {
+            setStats(prev => ({ ...prev, sparks }));
           });
-        });
-      }
+        }
+      });
     });
 
+    // Auth state listener
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        supabase.getProfile(session.user.id).then(profile => {
-          setUser({
-            id: session.user.id,
-            email: session.user.email || '',
-            full_name: profile?.full_name || session.user.email?.split('@')[0],
-            is_pro: profile?.is_pro || false
-          });
+        // Just logged in or session restored
+        const currentSparksInState = sparksRef.current;
+        supabase.getProfile(session.user.id, currentSparksInState).then(profile => {
+          if (profile) {
+            setUser({
+              id: session.user.id,
+              email: session.user.email || '',
+              full_name: profile.full_name || session.user.email?.split('@')[0],
+              is_pro: profile.is_pro || false
+            });
+            setStats(prev => ({ ...prev, sparks: profile.sparks ?? prev.sparks }));
+          }
         });
       } else {
+        // Logged out
         setUser(null);
+        getBrowserFingerprint().then(id => {
+          supabase.getGuestSparks(id).then(guestSparks => {
+            setStats(prev => ({ ...prev, sparks: guestSparks }));
+          });
+        });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, []); // Run only once on mount
 
   const [conversations, setConversations] = useState<Conversation[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_CONVS);
@@ -93,32 +122,11 @@ const App: React.FC = () => {
     return (localStorage.getItem(STORAGE_KEY_TRANS_LANG) as SupportLanguage) || 'French';
   });
 
-  const [stats, setStats] = useState<BrainStats>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_STATS);
-    try { 
-      const parsed = saved ? JSON.parse(saved) : null;
-      return parsed || { totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
-    } catch (e) { 
-      return { totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] }; 
-    }
-  });
-
   const [isLoading, setIsLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const t = UI_TRANSLATIONS[systemLang];
   const isRtl = systemLang === 'Arabic';
   const isPro = user?.is_pro;
-
-  useEffect(() => {
-    getBrowserFingerprint().then(id => {
-      setDeviceId(id);
-      if (!user) {
-        supabase.getGuestSparks(id).then(sparks => {
-          setStats(prev => ({ ...prev, sparks }));
-        });
-      }
-    });
-  }, [user]);
 
   const currentMessages = useMemo(() => {
     if (!user) return guestMessages;
@@ -142,6 +150,11 @@ const App: React.FC = () => {
     resetChatSession();
   };
 
+  const openAuth = (mode: 'login' | 'signup') => {
+    setAuthModalMode(mode);
+    setShowAuthModal(true);
+  };
+
   useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
   useEffect(() => { localStorage.setItem(STORAGE_KEY_AI_LANG, aiLang); }, [aiLang]);
   useEffect(() => { localStorage.setItem(STORAGE_KEY_TRANS_LANG, translationLang); }, [translationLang]);
@@ -152,15 +165,18 @@ const App: React.FC = () => {
     scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
   }, [conversations, guestMessages, activeTab, user, activeConvId]);
 
+  // Sync Sparks to correct record
   useEffect(() => { 
     localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
-    if (!user && deviceId) {
+    if (user) {
+      supabase.updateProfileSparks(user.id, stats.sparks);
+    } else if (deviceId) {
       supabase.updateGuestSparks(deviceId, stats.sparks);
     }
-  }, [stats, user, deviceId]);
+  }, [stats.sparks, user, deviceId]);
 
   const handleNewChat = useCallback(() => {
-    if (!user) { setShowAuthModal(true); return; }
+    if (!user) { openAuth('signup'); return; }
     
     // Check if current view is already empty
     const currentConv = conversations.find(c => c.id === activeConvId);
@@ -366,7 +382,7 @@ const App: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           user={user}
-          onOpenAuth={() => setShowAuthModal(true)}
+          onOpenAuth={openAuth}
           isSidebarExpanded={isSidebarExpanded}
           onToggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)}
         />
@@ -376,7 +392,7 @@ const App: React.FC = () => {
             <div className="bg-orange-50 border-b border-orange-100 p-2 flex items-center justify-center gap-2 text-[10px] sm:text-xs font-bold text-orange-700">
                <ShieldAlert size={14} />
                <span>{t.guestModeDesc}</span>
-               <button onClick={() => setShowAuthModal(true)} className="underline ml-2">Sign up now</button>
+               <button onClick={() => openAuth('signup')} className="underline ml-2">Sign up now</button>
             </div>
           )}
 
@@ -395,7 +411,7 @@ const App: React.FC = () => {
                       language={systemLang} 
                       translationLanguage={translationLang}
                       isPro={!!isPro} 
-                      onLockClick={() => user ? setShowProModal(true) : setShowAuthModal(true)}
+                      onLockClick={() => user ? setShowProModal(true) : openAuth('signup')}
                       onDeepDive={handleDeepDive}
                     />
                   ))}
@@ -430,7 +446,7 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {showAuthModal && <AuthModal language={systemLang} onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}
+      {showAuthModal && <AuthModal language={systemLang} initialMode={authModalMode} onClose={() => setShowAuthModal(false)} onLogin={handleLogin} />}
       {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={() => {}} />}
       {showDeleteModal && <DeleteConfirmModal language={systemLang} onClose={() => setShowDeleteModal(false)} onConfirm={handleClearHistory} />}
       

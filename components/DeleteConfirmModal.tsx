@@ -36,7 +36,7 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ language, onClo
           <div className="flex flex-col w-full gap-3">
             <button 
               onClick={onConfirm}
-              className="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:bg-red-700 transition-all active:scale-[0.98] shadow-lg shadow-red-100"
+              className="w-full bg-red-500 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:bg-red-600 transition-all active:scale-[0.98] shadow-lg shadow-red-100"
             >
               <Trash2 size={20} />
               {t.confirmDeletion}

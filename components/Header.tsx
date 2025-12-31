@@ -9,7 +9,7 @@ interface HeaderProps {
   activeTab: 'practice' | 'brain';
   setActiveTab: (tab: 'practice' | 'brain') => void;
   user: User | null;
-  onOpenAuth: () => void;
+  onOpenAuth: (mode: 'login' | 'signup') => void;
   isSidebarExpanded: boolean;
   onToggleSidebar: () => void;
 }
@@ -126,14 +126,14 @@ const Header: React.FC<HeaderProps> = ({
         {!user ? (
           <div className="flex items-center gap-1 sm:gap-3">
              <button 
-              onClick={onOpenAuth}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-black text-slate-900 border border-slate-200 hover:bg-slate-50 transition-colors"
+              onClick={() => onOpenAuth('login')}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-black text-blue-600 border border-blue-100 hover:bg-blue-50 transition-colors"
              >
                {t.login}
              </button>
              <button 
-              onClick={onOpenAuth}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-black text-white bg-slate-950 hover:bg-slate-800 transition-colors shadow-sm"
+              onClick={() => onOpenAuth('signup')}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-black text-white bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 transition-all shadow-md active:scale-95"
              >
                {t.signup}
              </button>

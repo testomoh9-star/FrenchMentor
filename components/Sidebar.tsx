@@ -127,10 +127,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             {conversations.length > 0 && (
               <button 
                 onClick={onDeleteAllChats}
-                className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all group"
-                title={t.deleteAll}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-red-500 hover:bg-red-500/10 rounded-lg transition-all text-[10px] font-black uppercase tracking-wider"
               >
-                <Trash2 size={16} />
+                <Trash2 size={12} />
+                <span>{t.deleteAll}</span>
               </button>
             )}
           </div>

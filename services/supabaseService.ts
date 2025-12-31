@@ -68,7 +68,7 @@ export const supabase = {
           .from('guest_tracking')
           .insert([{ device_id: fingerprint, sparks: 8 }])
           .select()
-          .single();
+          .maybeSingle();
         return newData?.sparks || 8;
       }
       return data?.sparks ?? 8;
@@ -85,12 +85,45 @@ export const supabase = {
       .eq('device_id', fingerprint);
   },
 
-  getProfile: async (userId: string) => {
-    const { data } = await supabaseClient
+  getProfile: async (userId: string, initialSparks?: number) => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Supabase error fetching profile:", error.message, error.details);
+        throw error;
+      }
+
+      if (!data) {
+        // Create profile with inherited sparks or default 8
+        const { data: newProfile, error: insertError } = await supabaseClient
+          .from('profiles')
+          .insert([{ id: userId, sparks: initialSparks ?? 8, is_pro: false }])
+          .select()
+          .maybeSingle();
+        
+        if (insertError) {
+          console.error("Supabase error creating profile:", insertError.message, insertError.details);
+          throw insertError;
+        }
+        return newProfile || { id: userId, sparks: initialSparks ?? 8, is_pro: false };
+      }
+      return data;
+    } catch (e: any) {
+      console.error("Critical error in getProfile:", e?.message || e);
+      // Return a basic profile object to prevent app hang if DB query fails but auth exists
+      return { id: userId, sparks: initialSparks ?? 8, is_pro: false };
+    }
+  },
+
+  updateProfileSparks: async (userId: string, sparks: number) => {
+    await supabaseClient
       .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    return data;
+      .update({ sparks })
+      .eq('id', userId);
   }
 };
