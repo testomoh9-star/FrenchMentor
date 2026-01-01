@@ -1,46 +1,39 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { Conversation, Message } from '../types';
+import { Conversation, Message, BrainStats } from '../types';
 
-/* 
-  REQUIRED SUPABASE TABLES:
-  
-  1. profiles
-     - id: uuid (primary key, references auth.users.id)
-     - sparks: integer (default: 8)
-     - is_pro: boolean (default: false)
-     - full_name: text
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
-  2. conversations
-     - id: text (primary key)
-     - user_id: uuid (references auth.users.id)
-     - title: text
-     - messages: jsonb
-     - timestamp: bigint
-*/
-
-const supabaseUrl = 'https://rrbptxpezgxpnuximgzw.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyYnB0eHBlemd4cG51eGltZ3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxMTM0NTYsImV4cCI6MjA4MjY4OTQ1Nn0.SdnSRr0lrwSrbwPnMN7l-gfVPctMQeQb60YgVD6fM38';
-
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+export const supabaseClient = (supabaseUrl && supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null as any;
 
 export const supabase = {
   auth: {
     signInWithPassword: async (email: string, password?: string) => {
+      if (!supabaseClient) throw new Error("Supabase client not initialized.");
       return await supabaseClient.auth.signInWithPassword({ email, password: password || '' });
     },
     signUp: async (email: string, password?: string) => {
+      if (!supabaseClient) throw new Error("Supabase client not initialized.");
       return await supabaseClient.auth.signUp({ email, password: password || '' });
     },
+    signInWithGoogle: async () => {
+      if (!supabaseClient) throw new Error("Supabase client not initialized.");
+      return await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin }
+      });
+    },
     signOut: async () => {
+      if (!supabaseClient) return;
       return await supabaseClient.auth.signOut();
     }
   },
 
-  /**
-   * Safe Profile Fetcher: Never returns null, always returns a valid object or a default.
-   */
   getProfile: async (userId: string) => {
+    if (!supabaseClient) return null;
     try {
       const { data, error } = await supabaseClient
         .from('profiles')
@@ -48,44 +41,49 @@ export const supabase = {
         .eq('id', userId)
         .maybeSingle();
       
-      // If table doesn't exist or other DB error, use fail-safe defaults
-      if (error) {
-        console.warn("Supabase: Profiles table may be missing or inaccessible. Using local defaults.");
-        return { id: userId, sparks: 8, is_pro: false };
-      }
+      if (error) throw error;
       
-      // Create profile if missing
       if (!data) {
         const { data: newProfile } = await supabaseClient
           .from('profiles')
           .insert([{ id: userId, sparks: 8, is_pro: false }])
           .select()
           .single();
-        return newProfile || { id: userId, sparks: 8, is_pro: false };
+        return newProfile;
       }
       
       return data;
     } catch (e) {
-      return { id: userId, sparks: 8, is_pro: false };
+      console.error("Profile fetch error:", e);
+      return null;
     }
   },
 
-  updateSparks: async (userId: string, sparks: number) => {
+  syncProfile: async (userId: string, sparks: number, stats: Partial<BrainStats>) => {
+    if (!supabaseClient) return;
     try {
+      // We store the heavy stats (history, lessons, categories) in the brain_stats JSON column
+      const { totalCorrections, categories, history, archivedLessons } = stats;
+      const brainPayload = { totalCorrections, categories, history, archivedLessons };
+      
       await supabaseClient
         .from('profiles')
-        .update({ sparks })
+        .update({ 
+          sparks, 
+          brain_stats: brainPayload,
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', userId);
     } catch (e) {
-      // Silent fail - will retry next session
+      console.error("Sync profile error:", e);
     }
   },
 
   syncConversations: async (userId: string, conversations: Conversation[]) => {
+    if (!supabaseClient) return;
     try {
-      // Simple Sync: Delete user's current cloud set and replace with the latest state
+      // Simple strategy: delete existing and insert new for the user
       await supabaseClient.from('conversations').delete().eq('user_id', userId);
-      
       if (conversations.length > 0) {
         const payload = conversations.map(c => ({
           user_id: userId,
@@ -97,11 +95,12 @@ export const supabase = {
         await supabaseClient.from('conversations').insert(payload);
       }
     } catch (e) {
-      console.warn("Supabase: Conversations table may be missing. Sync skipped.");
+      console.error("Sync conversations error:", e);
     }
   },
 
   fetchConversations: async (userId: string): Promise<Conversation[]> => {
+    if (!supabaseClient) return [];
     try {
       const { data, error } = await supabaseClient
         .from('conversations')

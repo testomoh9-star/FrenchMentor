@@ -1,12 +1,13 @@
-
 import React, { useState } from 'react';
-import { Message, CorrectionResponse, SupportLanguage, UI_TRANSLATIONS } from '../types';
+// Fix: Import SystemLanguage for the UI label language prop.
+import { Message, CorrectionResponse, SupportLanguage, SystemLanguage, UI_TRANSLATIONS } from '../types';
 import { Volume2, BookOpen, ArrowRight, Loader2, Lock, GraduationCap, Layout, Sparkles, Zap } from 'lucide-react';
 import { playFrenchTTS } from '../services/geminiService';
 
 interface MessageBubbleProps {
   message: Message;
-  language: SupportLanguage;
+  // Fix: language prop changed to SystemLanguage to match systemLang state in App.tsx.
+  language: SystemLanguage;
   translationLanguage: SupportLanguage;
   isPro?: boolean;
   onLockClick?: () => void;

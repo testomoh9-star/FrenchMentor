@@ -1,11 +1,12 @@
-
 import React from 'react';
-import { CoachLesson, UI_TRANSLATIONS, SupportLanguage } from '../types';
+// Fix: Import SystemLanguage for UI labels.
+import { CoachLesson, UI_TRANSLATIONS, SupportLanguage, SystemLanguage } from '../types';
 import { X, Zap, Brain, Target, ArrowDown, Lightbulb, Crown, Sparkles } from 'lucide-react';
 
 interface CoachLessonModalProps {
   lesson: CoachLesson;
-  language: SupportLanguage;
+  // Fix: language prop changed to SystemLanguage to match systemLang state in App.tsx.
+  language: SystemLanguage;
   onClose: () => void;
 }
 

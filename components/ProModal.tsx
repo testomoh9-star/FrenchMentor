@@ -1,10 +1,11 @@
-
 import React from 'react';
 import { X, Check, Lightbulb, Lock } from 'lucide-react';
-import { SupportLanguage, UI_TRANSLATIONS } from '../types';
+// Fix: Import SystemLanguage for UI labels.
+import { SupportLanguage, SystemLanguage, UI_TRANSLATIONS } from '../types';
 
 interface ProModalProps {
-  language: SupportLanguage;
+  // Fix: language prop changed to SystemLanguage to match systemLang state in App.tsx.
+  language: SystemLanguage;
   onClose: () => void;
   onUpgrade: () => void;
 }

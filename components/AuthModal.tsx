@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, Loader2, UserPlus, LogIn, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Lock, Loader2, UserPlus, LogIn, AlertCircle, CheckCircle2, ChevronLeft, Chrome } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS, User } from '../types';
 import { supabase } from '../services/supabaseService';
 
@@ -18,13 +18,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, initialMode = 'login', 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const t = UI_TRANSLATIONS[language];
+  
   const isRtl = language === 'Arabic';
 
-  // Sync mode if initialMode changes while component is mounted
   useEffect(() => {
     setIsSignUp(initialMode === 'signup');
   }, [initialMode]);
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithGoogle();
+      if (error) throw error;
+    } catch (err: any) {
+      setErrorMsg(err.message);
+      setIsLoading(false);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +53,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, initialMode = 'login', 
 
       if (error) {
         if (error.message.includes("Email not confirmed")) {
-          setErrorMsg("Account found, but email is not verified. Please check your inbox for a confirmation link.");
+          setErrorMsg("Account found, but email is not verified. Please check your inbox.");
+          setIsVerificationSent(true);
         } else {
           setErrorMsg(error.message);
         }
@@ -51,6 +62,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, initialMode = 'login', 
         return;
       }
 
+      // If sign up succeeded but no session, verification is required
       if (isSignUp && data.user && !data.session) {
         setIsVerificationSent(true);
         setIsLoading(false);
@@ -64,9 +76,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, initialMode = 'login', 
           full_name: email.split('@')[0],
           is_pro: false
         });
+        onClose();
       }
     } catch (err: any) {
-      setErrorMsg(err.message || (isSignUp ? "Sign up failed." : "Login failed."));
+      setErrorMsg(err.message || "Authentication failed.");
     } finally {
       setIsLoading(false);
     }
@@ -74,48 +87,84 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, initialMode = 'login', 
 
   if (isVerificationSent) {
     return (
-      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-        <div className={`bg-white w-full max-w-[400px] rounded-[2.5rem] shadow-2xl overflow-hidden relative p-8 sm:p-10 text-center ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
-          <div className="bg-green-50 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto text-green-600 mb-6 shadow-sm border border-green-100">
-            <CheckCircle2 size={40} />
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+        <div className={`bg-white w-full max-w-[400px] rounded-[2.5rem] shadow-2xl p-8 sm:p-10 text-center ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
+          <div className="bg-blue-50 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto text-blue-600 mb-6 border border-blue-100">
+            <Mail size={40} />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4">Check your inbox</h2>
-          <p className="text-slate-500 font-medium mb-8 leading-relaxed">
-            We've sent a verification link to <span className="text-slate-900 font-black">{email}</span>. Please click it to activate your account.
+          <h2 className="text-3xl font-black text-slate-900 mb-4">Verification Sent</h2>
+          <p className="text-slate-500 font-medium mb-6 leading-relaxed">
+            We sent a link to <span className="text-slate-900 font-black">{email}</span>.
           </p>
-          <button 
-            onClick={onClose}
-            className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 text-white py-4 rounded-2xl font-black text-lg active:scale-95 transition-all shadow-lg shadow-indigo-100"
-          >
-            Got it
-          </button>
+
+          <div className="bg-orange-50 p-5 rounded-2xl mb-8 border border-orange-100 text-left">
+            <p className="text-[10px] font-black text-orange-600 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <AlertCircle size={12} /> Email not arriving?
+            </p>
+            <ul className="text-[10px] text-orange-700/70 space-y-1 font-bold list-disc list-inside">
+              <li>Check your <b>Spam/Junk</b> folder.</li>
+              <li>Wait up to 5 minutes (SMTP is busy).</li>
+              <li>Try <b>Google Login</b> instead—it's instant.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <button 
+              onClick={handleGoogleLogin}
+              className="w-full bg-white border-2 border-slate-100 text-slate-700 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-95"
+            >
+              <Chrome size={18} className="text-blue-500" /> Use Google (Instant)
+            </button>
+            <button 
+              onClick={() => setIsVerificationSent(false)}
+              className="w-full py-2 text-slate-400 hover:text-slate-600 font-bold text-xs flex items-center justify-center gap-1"
+            >
+              <ChevronLeft size={14} /> Back to email login
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-      <div className={`bg-white w-full max-w-[400px] rounded-[2.5rem] shadow-2xl overflow-hidden relative p-8 sm:p-10 ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 rounded-full transition-colors">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+      <div className={`bg-white w-full max-w-[420px] rounded-[2.5rem] shadow-2xl relative p-8 sm:p-10 ${isRtl ? 'font-arabic' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 rounded-full">
           <X size={20} />
         </button>
 
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <h2 className="text-3xl font-black text-slate-900 mb-2">
-            {isSignUp ? 'Join LexiLift' : 'Welcome Back'}
+            {isSignUp ? 'Start Learning' : 'Welcome Back'}
           </h2>
           <p className="text-slate-500 text-sm font-medium">
-            {isSignUp ? 'Create an account to save progress.' : 'Log in to continue your journey.'}
+            Join 100+ users reaching native-level fluency.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold flex items-start gap-3 animate-in slide-in-from-top-2">
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold flex items-start gap-3">
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
             <p className="leading-tight">{errorMsg}</p>
           </div>
         )}
+
+        {/* Social Login Leading */}
+        <button 
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
+          className="w-full bg-white border-2 border-slate-100 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm active:scale-95 mb-6"
+        >
+          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Chrome size={18} className="text-blue-500" />}
+          Continue with Google
+        </button>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-px bg-slate-100 flex-1" />
+          <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Or use email</span>
+          <div className="h-px bg-slate-100 flex-1" />
+        </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div className="space-y-2">
@@ -146,27 +195,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ language, initialMode = 'login', 
           <button 
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:from-cyan-600 hover:to-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 mt-2"
+            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
           >
             {isLoading ? <Loader2 size={20} className="animate-spin" /> : (
-              <>{isSignUp ? <UserPlus size={20} /> : <LogIn size={20} />} {isSignUp ? 'Sign Up' : 'Log In'}</>
+              isSignUp ? 'Create Free Account' : 'Log In'
             )}
           </button>
         </form>
 
         <button 
-          onClick={() => {
-            setIsSignUp(!isSignUp);
-            setErrorMsg(null);
-          }}
-          className="w-full mt-8 text-slate-500 text-xs font-bold hover:text-blue-600 transition-colors"
+          onClick={() => { setIsSignUp(!isSignUp); setErrorMsg(null); }}
+          className="w-full mt-6 text-slate-400 text-xs font-bold hover:text-blue-600 transition-colors"
         >
-          {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up for free"}
+          {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up free"}
         </button>
-
-        <p className="text-center mt-10 text-[10px] text-slate-400 font-medium leading-relaxed">
-          By continuing, you agree to LexiLift's <span className="text-blue-500">Terms of Service</span> and <span className="text-blue-500">Privacy Policy</span>.
-        </p>
       </div>
     </div>
   );

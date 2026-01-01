@@ -1,12 +1,13 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, Zap } from 'lucide-react';
-import { SupportLanguage, UI_TRANSLATIONS } from '../types';
+// Fix: Import SystemLanguage for UI labels.
+import { SupportLanguage, SystemLanguage, UI_TRANSLATIONS } from '../types';
 
 interface InputAreaProps {
   onSend: (text: string) => void;
   isLoading: boolean;
-  language: SupportLanguage;
+  // Fix: language prop changed to SystemLanguage to match systemLang state in App.tsx.
+  language: SystemLanguage;
   sparks: number;
   isPro?: boolean;
 }

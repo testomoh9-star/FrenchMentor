@@ -1,12 +1,13 @@
-
 import React, { useState, useMemo } from 'react';
-import { BrainStats, SupportLanguage, UI_TRANSLATIONS, CoachLesson } from '../types';
+// Fix: Import SystemLanguage for UI labels.
+import { BrainStats, SupportLanguage, SystemLanguage, UI_TRANSLATIONS, CoachLesson } from '../types';
 import { Brain, Trophy, BarChart3, Clock, Lock, Crown, ArrowRight, Sparkles, Loader2, Lightbulb, BarChart } from 'lucide-react';
 import { generateCoachLesson, parseSafeJson } from '../services/geminiService';
 
 interface BrainDashboardProps {
   stats: BrainStats;
-  language: SupportLanguage;
+  // Fix: language prop changed to SystemLanguage to match systemLang state in App.tsx.
+  language: SystemLanguage;
   isPro?: boolean;
   onUpgradeClick?: () => void;
   userMessageCount: number;
@@ -61,7 +62,9 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({
     }
     setLoadingCategory(category);
     try {
-      const responseJson = await generateCoachLesson(category, stats.history, language);
+      // NOTE: We cast 'language' as SupportLanguage here because generateCoachLesson 
+      // is constrained to only 3 explanation languages, even if UI supports more.
+      const responseJson = await generateCoachLesson(category, stats.history, language as SupportLanguage);
       const parsedData = parseSafeJson(responseJson);
       const lessonData: CoachLesson = { 
         ...parsedData, 
