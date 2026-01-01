@@ -1,11 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, AlertCircle, ArrowRight, Brain, Trophy } from 'lucide-react';
-// Fix: Import SystemLanguage for UI labels.
-import { MistakeRecord, SupportLanguage, SystemLanguage, UI_TRANSLATIONS } from '../types';
+import { MistakeRecord, SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface ReviewSessionProps {
-  // Fix: language prop changed to SystemLanguage to match systemLang state in App.tsx.
-  language: SystemLanguage;
+  language: SupportLanguage;
   history: MistakeRecord[];
   onClose: () => void;
 }

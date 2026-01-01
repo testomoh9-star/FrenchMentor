@@ -1,11 +1,10 @@
+
 import React from 'react';
 import { X, Check, Lightbulb, Lock } from 'lucide-react';
-// Fix: Import SystemLanguage for UI labels.
-import { SupportLanguage, SystemLanguage, UI_TRANSLATIONS } from '../types';
+import { SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface ProModalProps {
-  // Fix: language prop changed to SystemLanguage to match systemLang state in App.tsx.
-  language: SystemLanguage;
+  language: SupportLanguage;
   onClose: () => void;
   onUpgrade: () => void;
 }
@@ -22,12 +21,6 @@ const ProModal: React.FC<ProModalProps> = ({ language, onClose, onUpgrade }) => 
     "Full access to \"My Brain\" (patterns & missions)",
     "Save lessons & mistakes to your library"
   ];
-
-  const handleUpgradeClick = () => {
-    // Replace this with your Lemon Squeezy checkout link
-    // window.open('https://your-store.lemonsqueezy.com/checkout/buy/...', '_blank');
-    onUpgrade();
-  };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
@@ -95,7 +88,7 @@ const ProModal: React.FC<ProModalProps> = ({ language, onClose, onUpgrade }) => 
           {/* CTA Button */}
           <div className="w-full space-y-4 mb-8 sm:mb-10">
             <button 
-              onClick={handleUpgradeClick}
+              onClick={onUpgrade}
               className="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white py-4 sm:py-5 rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-indigo-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               Upgrade to Pro
