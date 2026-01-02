@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Zap, MessageSquare, Brain, Crown, Menu, LogIn, UserPlus, Lock } from 'lucide-react';
+import { Zap, MessageSquare, Brain, Crown, Menu, LogIn, UserPlus, Lock, RefreshCw } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS } from '../types';
 
 interface HeaderProps {
@@ -15,6 +15,7 @@ interface HeaderProps {
   isAuthenticated: boolean;
   onSignupClick: () => void;
   onLoginClick: () => void;
+  isSyncing?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -28,7 +29,8 @@ const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
   isAuthenticated,
   onSignupClick,
-  onLoginClick
+  onLoginClick,
+  isSyncing
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
@@ -102,6 +104,13 @@ const Header: React.FC<HeaderProps> = ({
         )}
 
         <LexiBranding />
+
+        {isSyncing && (
+          <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+            <RefreshCw size={12} className="text-blue-500 animate-spin" />
+            <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest hidden sm:inline">Syncing</span>
+          </div>
+        )}
       </div>
       
       <nav className="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-xl border border-slate-200 mx-1 sm:mx-2 shrink-0">

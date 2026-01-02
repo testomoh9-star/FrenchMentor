@@ -32,9 +32,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, language, onCl
         if (error) throw error;
         setError("Success! Check your email for verification link.");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        onClose();
+        if (data.user) {
+          // Force close immediately if we have a user
+          onClose();
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -80,25 +83,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, language, onCl
 
           <form onSubmit={handleAuth} className="w-full space-y-3 mb-6">
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Mail className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-slate-400`} size={18} />
               <input 
                 type="email" 
                 placeholder="Email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:border-blue-500 outline-none transition-all"
+                className={`w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 ${isRtl ? 'pr-12 pl-4 text-right' : 'pl-12 pr-4 text-left'} text-sm font-bold focus:border-blue-500 outline-none transition-all`}
               />
             </div>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Lock className={`absolute ${isRtl ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 text-slate-400`} size={18} />
               <input 
                 type="password" 
                 placeholder="Password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:border-blue-500 outline-none transition-all"
+                className={`w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 ${isRtl ? 'pr-12 pl-4 text-right' : 'pl-12 pr-4 text-left'} text-sm font-bold focus:border-blue-500 outline-none transition-all`}
               />
             </div>
             <button 

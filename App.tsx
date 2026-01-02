@@ -40,9 +40,14 @@ const App: React.FC = () => {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup' | 'limit' | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [isPro, setIsPro] = useState<boolean>(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  
+  // Use null for "checking session" state to avoid Guest flicker
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  
+  // Distinguish between first-time load and background syncing
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const [guestInfo, setGuestInfo] = useState<GuestInfo | null>(() => {
@@ -77,28 +82,37 @@ const App: React.FC = () => {
 
   // --- Auth Session Listener ---
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-      setUserId(session?.user?.id || null);
-      setUserEmail(session?.user?.email || null);
-      if (session) loadUserData(session.user.id);
-      else loadGuestData();
-    });
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      handleAuthState(session);
+      setIsInitialLoading(false);
+    };
+
+    initSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      setUserId(session?.user?.id || null);
-      setUserEmail(session?.user?.email || null);
-      if (session) loadUserData(session.user.id);
-      else {
-        loadGuestData();
-        setActiveTab('practice');
-        setActiveConvId(null);
-      }
+      handleAuthState(session);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleAuthState = (session: any) => {
+    const isAuth = !!session;
+    setIsAuthenticated(isAuth);
+    setUserId(session?.user?.id || null);
+    setUserEmail(session?.user?.email || null);
+    
+    if (isAuth) {
+      loadUserData(session.user.id);
+      // Close any open auth modals on successful login
+      setAuthModalMode(null);
+    } else {
+      loadGuestData();
+      setActiveTab('practice');
+      setActiveConvId(null);
+    }
+  };
 
   const loadGuestData = () => {
     const savedConvs = localStorage.getItem(STORAGE_KEY_CONVS);
@@ -153,7 +167,7 @@ const App: React.FC = () => {
       }
 
       setConversations(convs);
-      if (convs.length > 0) setActiveConvId(convs[convs.length - 1].id);
+      if (convs.length > 0 && !activeConvId) setActiveConvId(convs[convs.length - 1].id);
     } catch (e) {
       console.error("DB Load error:", e);
     } finally {
@@ -204,6 +218,35 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY_IS_PRO, String(isPro));
     if(activeConvId) localStorage.setItem(STORAGE_KEY_CUR_CONV, activeConvId);
   }, [guestInfo, conversations, stats, isPro, activeConvId, isAuthenticated]);
+
+  const updateLanguageSettings = (updates: any) => {
+    if (userId && isAuthenticated) {
+      const newSettings = {
+        systemLang: updates.systemLang || systemLang,
+        aiLang: updates.aiLang || aiLang,
+        transLang: updates.transLang || translationLang
+      };
+      dbService.updateProfile(userId, { settings: newSettings });
+    }
+  };
+
+  const handleSetSystemLang = (lang: SystemLanguage) => {
+    setSystemLang(lang);
+    updateLanguageSettings({ systemLang: lang });
+    if (!isAuthenticated) localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, lang);
+  };
+
+  const handleSetAiLang = (lang: SupportLanguage) => {
+    setAiLang(lang);
+    updateLanguageSettings({ aiLang: lang });
+    if (!isAuthenticated) localStorage.setItem(STORAGE_KEY_AI_LANG, lang);
+  };
+
+  const handleSetTranslationLang = (lang: SupportLanguage) => {
+    setTranslationLang(lang);
+    updateLanguageSettings({ transLang: lang });
+    if (!isAuthenticated) localStorage.setItem(STORAGE_KEY_TRANS_LANG, lang);
+  };
 
   const handleSendMessage = useCallback(async (content: string) => {
     if (!isAuthenticated) {
@@ -313,11 +356,20 @@ const App: React.FC = () => {
     setShowProModal(false);
   };
 
-  if (isSyncing) {
+  // Initial Splash Screen
+  if (isInitialLoading || isAuthenticated === null) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-slate-50 gap-4">
-        <Loader2 className="animate-spin text-blue-600" size={48} />
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Syncing your brain...</p>
+      <div className="h-full flex flex-col items-center justify-center bg-slate-50 gap-6">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+             <div className="w-8 h-8 bg-blue-600 rounded-lg shadow-lg"></div>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <p className="text-slate-900 font-black text-xl tracking-tight">LexiLift AI</p>
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">{t.analyzing}</p>
+        </div>
       </div>
     );
   }
@@ -360,6 +412,7 @@ const App: React.FC = () => {
           isAuthenticated={isAuthenticated}
           onSignupClick={() => setAuthModalMode('signup')}
           onLoginClick={() => setAuthModalMode('login')}
+          isSyncing={isSyncing}
         />
 
         <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth flex flex-col relative">
@@ -424,7 +477,17 @@ const App: React.FC = () => {
 
       {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={handleUpgrade} />}
       {authModalMode && <AuthModal mode={authModalMode} language={systemLang} onClose={() => setAuthModalMode(null)} />}
-      {showSettingsModal && <SettingsModal language={systemLang} aiLang={aiLang} translationLang={translationLang} onClose={() => setShowSettingsModal(false)} onSetSystemLang={setSystemLang} onSetAiLang={setAiLang} onSetTranslationLang={setTranslationLang} />}
+      {showSettingsModal && (
+        <SettingsModal 
+          language={systemLang} 
+          aiLang={aiLang} 
+          translationLang={translationLang} 
+          onClose={() => setShowSettingsModal(false)} 
+          onSetSystemLang={handleSetSystemLang} 
+          onSetAiLang={handleSetAiLang} 
+          onSetTranslationLang={handleSetTranslationLang} 
+        />
+      )}
       {showFeedbackModal && <FeedbackModal language={systemLang} onClose={() => setShowFeedbackModal(false)} />}
       {activeLesson && <CoachLessonModal lesson={activeLesson} language={systemLang} onClose={() => setActiveLesson(null)} />}
     </div>

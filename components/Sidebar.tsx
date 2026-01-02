@@ -130,9 +130,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {/* THE RAIL */}
-        <div className="w-16 flex flex-col items-center py-4 border-r border-slate-800/50 shrink-0">
+        <div className={`w-16 flex flex-col items-center py-4 shrink-0 ${isRtl ? 'border-l' : 'border-r'} border-slate-800/50`}>
           <button onClick={onToggle} className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-8">
-            <PanelLeft size={22} />
+            <PanelLeft size={22} className={isRtl ? 'scale-x-[-1]' : ''} />
           </button>
 
           <button onClick={onNewChat} className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-4" title={t.newChat}>
@@ -141,9 +141,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="mt-auto flex flex-col gap-2 relative user-menu-container">
             {userMenuOpen && (
-              <div className={`absolute bottom-full mb-2 ${isRtl ? 'right-0' : 'left-0'} w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}>
-                <div className="flex items-center gap-3 p-3 mb-2 border-b border-slate-100">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black">{initials}</div>
+              <div 
+                className={`absolute bottom-full mb-2 ${isRtl ? 'right-0' : 'left-0'} w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}
+                dir={isRtl ? 'rtl' : 'ltr'}
+              >
+                <div className={`flex items-center gap-3 p-3 mb-2 border-b border-slate-100 ${isRtl ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
+                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black shrink-0">{initials}</div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-black text-slate-900 truncate">{displayName}</p>
                     <p className="text-[10px] text-slate-400 truncate">{userEmail}</p>
@@ -151,22 +154,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 {!isPro && (
-                  <button onClick={() => { onUpgradeClick(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
+                  <button onClick={() => { onUpgradeClick(); setUserMenuOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
                     <Sparkles size={16} className="text-cyan-500" /> {t.upgradeTitle}
                   </button>
                 )}
                 
-                <button onClick={() => { onOpenSettings(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
+                <button onClick={() => { onOpenSettings(); setUserMenuOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <Settings size={16} /> {t.settings}
                 </button>
                 
-                <button onClick={() => { onOpenFeedback(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
+                <button onClick={() => { onOpenFeedback(); setUserMenuOpen(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <MessageCircle size={16} /> {t.feedback}
                 </button>
 
                 <div className="h-px bg-slate-100 my-2" />
                 
-                <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                <button onClick={onLogout} className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <LogOut size={16} /> {t.logout}
                 </button>
               </div>
@@ -179,7 +182,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* THE PANEL */}
         <div className={`flex-1 flex flex-col min-w-0 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-          <div className="p-4 border-b border-white/5 flex items-center justify-between">
+          <div className={`p-4 border-b border-white/5 flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
             <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">{t.recentChats}</span>
           </div>
 
@@ -194,7 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {conversations.slice().reverse().map((conv) => (
                     <div key={conv.id} className={`relative group ${menuOpenId === conv.id ? 'z-50' : 'z-10'}`}>
                       {editingId === conv.id ? (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-xl border border-blue-500/50">
+                        <div className={`flex items-center gap-2 px-3 py-2 bg-white/10 rounded-xl border border-blue-500/50 ${isRtl ? 'flex-row-reverse' : ''}`}>
                           <input
                             ref={editInputRef}
                             type="text"
@@ -204,7 +207,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                               if (e.key === 'Enter') handleConfirmRename(conv.id);
                               if (e.key === 'Escape') setEditingId(null);
                             }}
-                            className="flex-1 bg-transparent text-white text-xs font-bold outline-none min-w-0"
+                            className={`flex-1 bg-transparent text-white text-xs font-bold outline-none min-w-0 ${isRtl ? 'text-right' : ''}`}
                           />
                           <button onClick={() => handleConfirmRename(conv.id)} className="text-green-400 p-1 hover:bg-white/10 rounded-md">
                             <Check size={14} />
@@ -213,7 +216,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       ) : (
                         <button 
                           onClick={() => onSelectChat(conv.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${activeConversationId === conv.id ? 'bg-white/10 text-white shadow-lg' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isRtl ? 'flex-row-reverse text-right' : 'text-left'} ${activeConversationId === conv.id ? 'bg-white/10 text-white shadow-lg' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
                         >
                           <div className="min-w-0 flex-1">
                             <h4 className="text-xs font-bold truncate tracking-tight">{conv.title}</h4>
@@ -229,11 +232,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                           </button>
                           {menuOpenId === conv.id && (
                             <div className={`absolute ${isRtl ? 'left-full ml-1' : 'right-full mr-1'} top-0 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150`}>
-                                <button onClick={(e) => handleStartRename(e, conv)} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all">
-                                  <Edit3 size={14} /> Rename
+                                <button onClick={(e) => handleStartRename(e, conv)} className={`w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
+                                  <Edit3 size={14} /> {isRtl ? 'إعادة تسمية' : 'Rename'}
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-                                  <Trash2 size={14} /> Delete
+                                <button onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }} className={`w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
+                                  <Trash2 size={14} /> {isRtl ? 'حذف' : 'Delete'}
                                 </button>
                             </div>
                           )}
@@ -254,7 +257,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </section>
 
             <section className="space-y-1">
-              <div className="px-4 py-2 flex items-center gap-2 text-white/30">
+              <div className={`px-4 py-2 flex items-center gap-2 text-white/30 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 <BookOpen size={12} />
                 <span className="text-[10px] font-black uppercase tracking-widest">{t.archiveTitle}</span>
               </div>
@@ -270,7 +273,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <p className="px-4 py-3 text-[10px] text-white/10 italic">Library is empty</p>
                 ) : (
                   archivedLessons.slice().reverse().map((lesson) => (
-                    <button key={lesson.id} onClick={() => onSelectLesson(lesson)} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-left text-white/50 hover:bg-white/5 hover:text-white group">
+                    <button key={lesson.id} onClick={() => onSelectLesson(lesson)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${isRtl ? 'flex-row-reverse text-right' : 'text-left'} text-white/50 hover:bg-white/5 hover:text-white group`}>
                       <div className="bg-cyan-500/10 p-2 rounded-lg text-cyan-400 group-hover:bg-gradient-to-br group-hover:from-cyan-400 group-hover:to-indigo-500 group-hover:text-white transition-all shrink-0">
                         <Lightbulb size={12} />
                       </div>
@@ -286,7 +289,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="p-4 border-t border-white/5 bg-slate-950/40">
             {isPro ? (
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-3 ${isRtl ? 'flex-row-reverse text-right' : ''}`}>
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-900/40">
                   <Crown size={14} className="text-white" />
                 </div>
@@ -298,13 +301,13 @@ const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               <button 
                 onClick={onUpgradeClick} 
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white flex items-center justify-between transition-all group shadow-lg shadow-indigo-900/20 active:scale-[0.98]"
+                className={`w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white flex items-center justify-between transition-all group shadow-lg shadow-indigo-900/20 active:scale-[0.98] ${isRtl ? 'flex-row-reverse' : ''}`}
               >
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <Crown size={14} className="text-white/80 group-hover:text-white" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Join Pro</span>
                 </div>
-                <ChevronRight size={14} className="text-white/50 group-hover:text-white" />
+                <ChevronRight size={14} className={`text-white/50 group-hover:text-white ${isRtl ? 'rotate-180' : ''}`} />
               </button>
             )}
           </div>
