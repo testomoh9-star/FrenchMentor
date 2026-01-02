@@ -118,8 +118,27 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     systemLang: "System Language",
     login: "Log in",
     signup: "Sign up for free",
+    signupCTA: "Create Account",
+    loginCTA: "Log In",
     guestMode: "Guest Mode",
     correctionsLeft: "{n} correction(s) remaining",
+    auth: {
+      login: {
+        title: "Welcome Back",
+        subtitle: "Log in to sync your progress across devices and continue your mastery.",
+        cta: "Log In"
+      },
+      signup: {
+        title: "Start Your Journey",
+        subtitle: "Create a free account to unlock daily sparks and linguistic tracking.",
+        cta: "Create Account"
+      },
+      limit: {
+        title: "Unlock the Full Experience",
+        subtitle: "Guests have reached their limit. Join LexiLift to keep learning.",
+        cta: "Sign up for free"
+      }
+    },
     catMap: {
       Grammar: "Grammar",
       Conjugation: "Conjugation",
@@ -139,7 +158,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "Je n'ai pas de l'argent",
       "Je cherche pour mon chat",
       "Je suis fini with my work",
-      "Est-ce que tu peux m'aider avec ça?",
+      "Est-ce que tu peux m'aider with that?",
       "S'il vous plaît, parlez plus lentement"
     ]
   },
@@ -186,8 +205,27 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     systemLang: "Langue du système",
     login: "Se connecter",
     signup: "S'inscrire gratuitement",
+    signupCTA: "Créer un compte",
+    loginCTA: "Se connecter",
     guestMode: "Mode invité",
     correctionsLeft: "{n} correction(s) restante(s)",
+    auth: {
+      login: {
+        title: "Bon retour !",
+        subtitle: "Connectez-vous pour synchroniser vos progrès et continuer votre apprentissage.",
+        cta: "Se connecter"
+      },
+      signup: {
+        title: "Commencez l'aventure",
+        subtitle: "Créez un compte gratuit pour débloquer les sparks quotidiens et le suivi linguistique.",
+        cta: "Créer un compte"
+      },
+      limit: {
+        title: "Débloquez l'expérience complète",
+        subtitle: "Les invités ont atteint leur limite. Rejoignez LexiLift pour continuer à apprendre.",
+        cta: "S'inscrire gratuitement"
+      }
+    },
     catMap: {
       Grammar: "Grammaire",
       Conjugaison: "Conjugaison",
@@ -254,8 +292,27 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     systemLang: "لغة النظام",
     login: "تسجيل الدخول",
     signup: "سجل مجاناً",
+    signupCTA: "إنشاء حساب",
+    loginCTA: "تسجيل الدخول",
     guestMode: "وضع الزائر",
     correctionsLeft: "{n} تصحيحات متبقية",
+    auth: {
+      login: {
+        title: "أهلاً بعودتك",
+        subtitle: "سجل الدخول لمزامنة تقدمك عبر الأجهزة ومواصلة إتقانك.",
+        cta: "تسجيل الدخول"
+      },
+      signup: {
+        title: "ابدأ رحلتك",
+        subtitle: "أنشئ حساباً مجانياً لفتح الشرارات اليومية والتتبع اللغوي.",
+        cta: "إنشاء حساب"
+      },
+      limit: {
+        title: "افتح التجربة الكاملة",
+        subtitle: "وصل الزوار إلى الحد الأقصى. انضم إلى LexiLift لمواصلة التعلم.",
+        cta: "سجل مجاناً"
+      }
+    },
     catMap: {
       Grammar: "قواعد",
       Conjugation: "تصريف الأفعال",
@@ -275,7 +332,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "Je n'ai pas de l'argent",
       "Je cherche pour mon chat",
       "Je suis fini avec محادثتي",
-      "Est-ce que tu peux m'aider avec ça?",
+      "Est-ce que tu peux m'aider مع هذا؟",
       "S'il vous plaît, parlez plus lentement"
     ]
   },
@@ -322,8 +379,27 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     systemLang: "Idioma del sistema",
     login: "Iniciar sesión",
     signup: "Regístrate gratis",
+    signupCTA: "Crear cuenta",
+    loginCTA: "Iniciar sesión",
     guestMode: "Modo invitado",
     correctionsLeft: "{n} corrección(es) restante(s)",
+    auth: {
+      login: {
+        title: "Bienvenido de nuevo",
+        subtitle: "Inicia sesión para sincronizar tu progreso y continuar tu maestría.",
+        cta: "Iniciar sesión"
+      },
+      signup: {
+        title: "Comienza tu viaje",
+        subtitle: "Crea una cuenta gratuita para desbloquear chispas diarias y seguimiento lingüístico.",
+        cta: "Crear cuenta"
+      },
+      limit: {
+        title: "Desbloquea la experiencia completa",
+        subtitle: "Los invitados han alcanzado su límite. Únete a LexiLift para seguir aprendiendo.",
+        cta: "Regístrate gratis"
+      }
+    },
     catMap: {
       Grammar: "Gramática",
       Conjugación: "Conjugación",
