@@ -1,10 +1,11 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { BookOpen, History, Lightbulb, ChevronRight, Crown, Lock, UserCircle, MoreVertical, Trash2, Edit3, Check, PanelLeft, SquarePen, Menu, Settings, MessageCircle, LogOut, Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { BookOpen, Lightbulb, ChevronRight, Crown, Lock, Settings, MessageCircle, LogOut, Sparkles, PanelLeft, SquarePen, MoreVertical, Edit3, Trash2, Check } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS, Conversation, CoachLesson } from '../types';
 
 interface SidebarProps {
   language: SystemLanguage;
+  userEmail: string | null;
   conversations: Conversation[];
   activeConversationId: string | null;
   onNewChat: () => void;
@@ -21,10 +22,12 @@ interface SidebarProps {
   translateCat: (cat: string) => string;
   onOpenSettings: () => void;
   onOpenFeedback: () => void;
+  onLogout: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   language,
+  userEmail,
   conversations,
   activeConversationId,
   onNewChat,
@@ -40,7 +43,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggle,
   translateCat,
   onOpenSettings,
-  onOpenFeedback
+  onOpenFeedback,
+  onLogout
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
@@ -49,6 +53,18 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  const initials = useMemo(() => {
+    if (!userEmail) return 'LL';
+    const parts = userEmail.split('@')[0].split(/[._-]/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
+  }, [userEmail]);
+
+  const displayName = useMemo(() => {
+    if (!userEmail) return 'Guest';
+    return userEmail.split('@')[0];
+  }, [userEmail]);
 
   useEffect(() => {
     if (editingId && editInputRef.current) {
@@ -125,38 +141,38 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="mt-auto flex flex-col gap-2 relative user-menu-container">
             {userMenuOpen && (
-              <div className={`absolute bottom-full mb-2 left-0 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}>
-                <div className="flex items-center gap-3 p-3 mb-2 border-b border-slate-100 dark:border-slate-800">
-                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black">JN</div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-black dark:text-white truncate">jnfe</p>
-                    <p className="text-[10px] text-slate-400 truncate">@jnfe</p>
+              <div className={`absolute bottom-full mb-2 ${isRtl ? 'right-0' : 'left-0'} w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}>
+                <div className="flex items-center gap-3 p-3 mb-2 border-b border-slate-100">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black">{initials}</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-slate-900 truncate">{displayName}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{userEmail}</p>
                   </div>
                 </div>
 
                 {!isPro && (
-                  <button onClick={() => { onUpgradeClick(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
+                  <button onClick={() => { onUpgradeClick(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
                     <Sparkles size={16} className="text-cyan-500" /> {t.upgradeTitle}
                   </button>
                 )}
                 
-                <button onClick={() => { onOpenSettings(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
+                <button onClick={() => { onOpenSettings(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
                   <Settings size={16} /> {t.settings}
                 </button>
                 
-                <button onClick={() => { onOpenFeedback(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">
+                <button onClick={() => { onOpenFeedback(); setUserMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
                   <MessageCircle size={16} /> {t.feedback}
                 </button>
 
-                <div className="h-px bg-slate-100 dark:border-slate-800 my-2" />
+                <div className="h-px bg-slate-100 my-2" />
                 
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all">
+                <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-all">
                   <LogOut size={16} /> {t.logout}
                 </button>
               </div>
             )}
             <button onClick={() => setUserMenuOpen(!userMenuOpen)} className={`p-2 rounded-xl transition-all ${userMenuOpen ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white hover:bg-white/10'}`}>
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-xs">JN</div>
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-black text-xs">{initials}</div>
             </button>
           </div>
         </div>
@@ -228,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <div className="px-2 pt-2">
                     <button 
                       onClick={onDeleteAllChats}
-                      className="w-full py-2 px-4 rounded-full bg-red-500/10 text-[#df3d31] hover:bg-red-500/20 text-[11px] font-bold transition-all text-center"
+                      className="w-full py-2 px-4 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[11px] font-bold transition-all text-center"
                     >
                       {t.deleteAll}
                     </button>

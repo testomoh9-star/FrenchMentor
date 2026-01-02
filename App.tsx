@@ -15,7 +15,7 @@ import SettingsModal from './components/SettingsModal';
 import FeedbackModal from './components/FeedbackModal';
 import CoachLessonModal from './components/CoachLessonModal';
 import AuthModal from './components/AuthModal';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'french_mentor_conversations';
 const STORAGE_KEY_CUR_CONV = 'french_mentor_cur_conv';
@@ -30,7 +30,6 @@ const FREE_DAILY_MAX = 8;
 const PRO_MONTHLY_MAX = 1000;
 const FREE_COST_PER_MSG = 2;
 const PRO_COST_PER_MSG = 1;
-const DEEP_DIVE_COST = 10;
 const GUEST_MAX_CORRECTIONS = 2;
 
 const App: React.FC = () => {
@@ -39,15 +38,13 @@ const App: React.FC = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup' | 'limit' | null>(null);
-  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [isPro, setIsPro] = useState<boolean>(false);
-  const [configError, setConfigError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // Guest State management
   const [guestInfo, setGuestInfo] = useState<GuestInfo | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_GUEST);
     if (saved) return JSON.parse(saved);
@@ -65,18 +62,25 @@ const App: React.FC = () => {
   const [systemLang, setSystemLang] = useState<SystemLanguage>('French');
   const [aiLang, setAiLang] = useState<SupportLanguage>('French');
   const [translationLang, setTranslationLang] = useState<SupportLanguage>('French');
-  const [stats, setStats] = useState<BrainStats>({ totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] });
+  const [stats, setStats] = useState<BrainStats>({ 
+    totalCorrections: 0, 
+    categories: {}, 
+    history: [], 
+    sparks: FREE_DAILY_MAX, 
+    lastRefillTimestamp: Date.now(), 
+    archivedLessons: [] 
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const t = UI_TRANSLATIONS[systemLang];
-  const isRtl = systemLang === 'Arabic';
 
   // --- Auth Session Listener ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
       setUserId(session?.user?.id || null);
+      setUserEmail(session?.user?.email || null);
       if (session) loadUserData(session.user.id);
       else loadGuestData();
     });
@@ -84,8 +88,13 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
       setUserId(session?.user?.id || null);
+      setUserEmail(session?.user?.email || null);
       if (session) loadUserData(session.user.id);
-      else loadGuestData();
+      else {
+        loadGuestData();
+        setActiveTab('practice');
+        setActiveConvId(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -100,8 +109,14 @@ const App: React.FC = () => {
     const savedTransLang = localStorage.getItem(STORAGE_KEY_TRANS_LANG);
 
     if (savedConvs) setConversations(JSON.parse(savedConvs));
+    else setConversations([]);
+
     if (savedStats) setStats(JSON.parse(savedStats));
+    else setStats({ totalCorrections: 0, categories: {}, history: [], sparks: FREE_DAILY_MAX, lastRefillTimestamp: Date.now(), archivedLessons: [] });
+
     if (savedCurConv) setActiveConvId(savedCurConv);
+    else setActiveConvId(null);
+
     if (savedSystemLang) setSystemLang(savedSystemLang as SystemLanguage);
     if (savedAiLang) setAiLang(savedAiLang as SupportLanguage);
     if (savedTransLang) setTranslationLang(savedTransLang as SupportLanguage);
@@ -131,9 +146,9 @@ const App: React.FC = () => {
           archivedLessons: library
         }));
         if (profile.settings) {
-          setSystemLang(profile.settings.systemLang);
-          setAiLang(profile.settings.aiLang);
-          setTranslationLang(profile.settings.transLang);
+          setSystemLang(profile.settings.systemLang || 'French');
+          setAiLang(profile.settings.aiLang || 'French');
+          setTranslationLang(profile.settings.transLang || 'French');
         }
       }
 
@@ -151,9 +166,9 @@ const App: React.FC = () => {
     return conversations.find(c => c.id === activeConvId)?.messages || [];
   }, [activeConvId, conversations]);
 
-  // Refill Logic
+  // Refill Logic (Source of truth is Supabase for auth users)
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !userId) return;
     const now = Date.now();
     const lastRefill = stats.lastRefillTimestamp || 0;
     const msInDay = 24 * 60 * 60 * 1000;
@@ -174,13 +189,13 @@ const App: React.FC = () => {
       }
     }
 
-    if (shouldRefill && userId) {
+    if (shouldRefill) {
       setStats(prev => ({ ...prev, sparks: newSparkCount, lastRefillTimestamp: now }));
       dbService.updateProfile(userId, { sparks: newSparkCount, last_refill_at: new Date(now).toISOString() });
     }
   }, [isPro, stats.lastRefillTimestamp, isAuthenticated, userId]);
 
-  // Persistent storage hooks (Guest vs Auth)
+  // Persistent storage hooks (Guest)
   useEffect(() => {
     if (isAuthenticated) return;
     localStorage.setItem(STORAGE_KEY_GUEST, JSON.stringify(guestInfo));
@@ -207,7 +222,6 @@ const App: React.FC = () => {
     setIsLoading(true);
     let targetConvId = activeConvId;
     
-    // Auto-create conversation if needed
     if (!targetConvId || (conversations.find(c => c.id === targetConvId)?.messages.length === 0)) {
       const id = Date.now().toString();
       const newConv: Conversation = { id, title: content.slice(0, 30) + "...", messages: [], timestamp: Date.now() };
@@ -284,7 +298,19 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    loadGuestData();
+  };
+
+  const handleUpgrade = async () => {
+    if (isAuthenticated && userId) {
+      await dbService.updateProfile(userId, { plan: 'pro', sparks: 1000 });
+      setIsPro(true);
+      setStats(prev => ({ ...prev, sparks: 1000 }));
+    } else {
+      setIsPro(true);
+      setStats(prev => ({ ...prev, sparks: 1000 }));
+      localStorage.setItem(STORAGE_KEY_IS_PRO, 'true');
+    }
+    setShowProModal(false);
   };
 
   if (isSyncing) {
@@ -297,10 +323,11 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-full relative font-sans ${isRtl ? 'font-arabic' : ''} bg-slate-50 text-slate-900`}>
+    <div className={`flex h-full relative font-sans ${systemLang === 'Arabic' ? 'font-arabic' : ''} bg-slate-50 text-slate-900`}>
       {isAuthenticated && (
         <Sidebar 
           language={systemLang}
+          userEmail={userEmail}
           conversations={conversations}
           activeConversationId={activeConvId}
           onNewChat={() => { setActiveConvId(null); setActiveTab('practice'); }}
@@ -317,6 +344,7 @@ const App: React.FC = () => {
           translateCat={(cat) => (t.catMap as any)[cat] || cat}
           onOpenSettings={() => setShowSettingsModal(true)}
           onOpenFeedback={() => setShowFeedbackModal(true)}
+          onLogout={handleLogout}
         />
       )}
 
@@ -351,7 +379,7 @@ const App: React.FC = () => {
                       translationLanguage={translationLang}
                       isPro={isPro} 
                       onLockClick={isAuthenticated ? () => setShowProModal(true) : () => setAuthModalMode('limit')}
-                      onDeepDive={() => {}} // Integration point for DeepDive persistence
+                      onDeepDive={() => {}} 
                       isAuthenticated={isAuthenticated}
                     />
                   ))}
@@ -394,7 +422,7 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={() => { setIsPro(true); setShowProModal(false); }} />}
+      {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={handleUpgrade} />}
       {authModalMode && <AuthModal mode={authModalMode} language={systemLang} onClose={() => setAuthModalMode(null)} />}
       {showSettingsModal && <SettingsModal language={systemLang} aiLang={aiLang} translationLang={translationLang} onClose={() => setShowSettingsModal(false)} onSetSystemLang={setSystemLang} onSetAiLang={setAiLang} onSetTranslationLang={setTranslationLang} />}
       {showFeedbackModal && <FeedbackModal language={systemLang} onClose={() => setShowFeedbackModal(false)} />}
