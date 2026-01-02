@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Zap } from 'lucide-react';
-import { SupportLanguage, UI_TRANSLATIONS } from '../types';
+import { Sparkles, Zap, ShieldAlert } from 'lucide-react';
+import { SupportLanguage, UI_TRANSLATIONS, GuestInfo } from '../types';
 
 interface InputAreaProps {
   onSend: (text: string) => void;
@@ -9,15 +9,18 @@ interface InputAreaProps {
   language: SupportLanguage;
   sparks: number;
   isPro?: boolean;
+  isAuthenticated: boolean;
+  guestInfo: GuestInfo | null;
 }
 
-const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, sparks, isPro }) => {
+const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, sparks, isPro, isAuthenticated, guestInfo }) => {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
+  
   const costPerMsg = isPro ? 1 : 2;
-  const hasEnoughSparks = sparks >= costPerMsg;
+  const hasEnoughSparks = isAuthenticated ? sparks >= costPerMsg : (guestInfo ? guestInfo.corrections_used < guestInfo.max_corrections : true);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -44,6 +47,8 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, spar
     }
   }, [text]);
 
+  const guestRemainingCount = guestInfo ? Math.max(0, guestInfo.max_corrections - guestInfo.corrections_used) : 0;
+
   return (
     <div className="bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgb(0,0,0,0.04)] px-3 sm:px-4 pt-3 sm:pt-4 safe-bottom-padding">
       <div className="max-w-2xl mx-auto flex flex-col gap-1.5 sm:gap-2">
@@ -57,7 +62,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, spar
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={hasEnoughSparks ? t.placeholder : "Out of sparks..."}
+            placeholder={hasEnoughSparks ? t.placeholder : (isAuthenticated ? "Out of sparks..." : "Limit reached")}
             className={`w-full bg-transparent border-0 focus:ring-0 resize-none text-slate-800 placeholder-slate-400 py-2 sm:py-3 px-2 sm:px-3 text-sm sm:text-base max-h-[120px] overflow-y-auto min-h-[44px] ${isRtl ? 'text-right' : 'text-left'}`}
             rows={1}
             disabled={isLoading || !hasEnoughSparks}
@@ -76,14 +81,24 @@ const InputArea: React.FC<InputAreaProps> = ({ onSend, isLoading, language, spar
               <span className="text-sm sm:text-base">{t.button}</span>
               {!text.trim() && <Sparkles size={14} className="sm:w-4 sm:h-4" />}
             </div>
-            {hasEnoughSparks && (
+            {isAuthenticated && hasEnoughSparks && (
               <span className="text-[8px] sm:text-[9px] font-bold opacity-80 flex items-center gap-0.5 mt-0.5 hidden sm:flex">
                 COST {costPerMsg} <Zap size={8} fill="currentColor" />
               </span>
             )}
           </button>
         </form>
-        {!hasEnoughSparks && (
+        
+        {!isAuthenticated && (
+          <div className="flex items-center justify-center gap-2 pb-1">
+             <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest">{t.guestMode} — </span>
+             <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-widest ${guestRemainingCount === 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                {t.correctionsLeft.replace("{n}", guestRemainingCount.toString())}
+             </span>
+          </div>
+        )}
+
+        {isAuthenticated && !hasEnoughSparks && (
           <p className="text-center text-[9px] sm:text-[10px] text-orange-500 font-bold uppercase tracking-wider animate-pulse pb-1">
             Wait for tomorrow or Upgrade
           </p>

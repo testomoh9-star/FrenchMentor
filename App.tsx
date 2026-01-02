@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Message, SupportLanguage, SystemLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation } from './types';
+import { Message, SupportLanguage, SystemLanguage, UI_TRANSLATIONS, BrainStats, CorrectionResponse, CoachLesson, Conversation, GuestInfo } from './types';
 import { sendMessageToGemini, resetChatSession, generateDeepDive } from './services/geminiService';
 import Header from './components/Header';
 import MessageBubble from './components/MessageBubble';
@@ -12,6 +12,7 @@ import Sidebar from './components/Sidebar';
 import SettingsModal from './components/SettingsModal';
 import FeedbackModal from './components/FeedbackModal';
 import CoachLessonModal from './components/CoachLessonModal';
+import SignupModal from './components/SignupModal';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 const STORAGE_KEY_CONVS = 'french_mentor_conversations';
@@ -21,23 +22,47 @@ const STORAGE_KEY_AI_LANG = 'french_mentor_ai_lang';
 const STORAGE_KEY_TRANS_LANG = 'french_mentor_trans_lang';
 const STORAGE_KEY_STATS = 'french_mentor_stats';
 const STORAGE_KEY_IS_PRO = 'french_mentor_is_pro';
+const STORAGE_KEY_GUEST = 'lexilift_guest';
+const STORAGE_KEY_AUTH = 'lexilift_is_authenticated';
 
-const FREE_DAILY_MAX = 8; // Changed from 6 to 8 for exactly 4 corrections (cost 2 each)
+const FREE_DAILY_MAX = 8; 
 const PRO_MONTHLY_MAX = 1000;
 const FREE_COST_PER_MSG = 2;
 const PRO_COST_PER_MSG = 1;
 const DEEP_DIVE_COST = 10;
+const GUEST_MAX_CORRECTIONS = 2;
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
   const [showProModal, setShowProModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showSignupModal, setShowSignupModal] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(window.innerWidth > 1024);
   const [isPro, setIsPro] = useState<boolean>(() => localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true');
   const [configError, setConfigError] = useState<string | null>(null);
   
+  // Auth state - Defaulting to Guest mode if not explicitly authenticated
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => localStorage.getItem(STORAGE_KEY_AUTH) === 'true');
+
+  // Guest State management
+  const [guestInfo, setGuestInfo] = useState<GuestInfo | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_GUEST);
+    if (saved) return JSON.parse(saved);
+    if (!isAuthenticated) {
+      const newGuest: GuestInfo = {
+        id: 'guest_' + Math.random().toString(36).substr(2, 9),
+        corrections_used: 0,
+        max_corrections: GUEST_MAX_CORRECTIONS,
+        created_at: Date.now()
+      };
+      localStorage.setItem(STORAGE_KEY_GUEST, JSON.stringify(newGuest));
+      return newGuest;
+    }
+    return null;
+  });
+
   // Hoisted state for viewing lessons from missions or archive
   const [activeLesson, setActiveLesson] = useState<CoachLesson | null>(null);
 
@@ -82,8 +107,21 @@ const App: React.FC = () => {
     return conversations.find(c => c.id === activeConvId)?.messages || [];
   }, [activeConvId, conversations]);
 
-  // Refill Logic Engine
+  // Sync Guest Info to storage
   useEffect(() => {
+    if (guestInfo) {
+      localStorage.setItem(STORAGE_KEY_GUEST, JSON.stringify(guestInfo));
+    }
+  }, [guestInfo]);
+
+  // Auth State persistence
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_AUTH, String(isAuthenticated));
+  }, [isAuthenticated]);
+
+  // Refill Logic Engine (Only for Authenticated Users)
+  useEffect(() => {
+    if (!isAuthenticated) return;
     const now = Date.now();
     const lastRefill = stats.lastRefillTimestamp || 0;
     const msInDay = 24 * 60 * 60 * 1000;
@@ -114,7 +152,7 @@ const App: React.FC = () => {
     if (shouldRefill) {
       setStats(prev => ({ ...prev, sparks: newSparkCount, lastRefillTimestamp: now }));
     }
-  }, [isPro, stats.lastRefillTimestamp, stats.sparks]);
+  }, [isPro, stats.lastRefillTimestamp, stats.sparks, isAuthenticated]);
 
   const handleUpgradeToPro = useCallback(() => {
     setIsPro(true);
@@ -125,6 +163,18 @@ const App: React.FC = () => {
     }));
     setShowProModal(false);
   }, []);
+
+  const handleSignupRedirect = () => {
+    setShowSignupModal(true);
+  };
+
+  const handleTabChange = (tab: 'practice' | 'brain') => {
+    if (!isAuthenticated && tab === 'brain') {
+      setShowSignupModal(true);
+      return;
+    }
+    setActiveTab(tab);
+  };
 
   // Persist Languages
   useEffect(() => { localStorage.setItem(STORAGE_KEY_SYSTEM_LANG, systemLang); }, [systemLang]);
@@ -180,8 +230,17 @@ const App: React.FC = () => {
   }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
+    // Guest Limit Check
+    if (!isAuthenticated) {
+      if (guestInfo && guestInfo.corrections_used >= guestInfo.max_corrections) {
+        setShowSignupModal(true);
+        return;
+      }
+    }
+
+    // Spark Limit Check (Authenticated)
     const cost = isPro ? PRO_COST_PER_MSG : FREE_COST_PER_MSG;
-    if (stats.sparks < cost) {
+    if (isAuthenticated && stats.sparks < cost) {
       setShowProModal(true);
       return;
     }
@@ -203,7 +262,10 @@ const App: React.FC = () => {
     const newUserMessage: Message = { id: Date.now().toString(), role: 'user', content, timestamp: Date.now() };
     setConversations(prev => prev.map(c => c.id === targetConvId ? { ...c, messages: [...c.messages, newUserMessage], timestamp: Date.now() } : c));
     setIsLoading(true);
-    setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - cost) }));
+
+    if (isAuthenticated) {
+      setStats(prev => ({ ...prev, sparks: Math.max(0, prev.sparks - cost) }));
+    }
 
     try {
       const jsonResponse = await sendMessageToGemini(content, aiLang, translationLang, currentMessages);
@@ -215,6 +277,12 @@ const App: React.FC = () => {
       }));
 
       const data: CorrectionResponse = JSON.parse(jsonResponse);
+      
+      // Increment Guest Usage
+      if (!isAuthenticated) {
+        setGuestInfo(prev => prev ? { ...prev, corrections_used: prev.corrections_used + 1 } : null);
+      }
+
       if (data.corrections && data.corrections.length > 0) {
         setStats(prev => {
           const newCats = { ...prev.categories };
@@ -232,9 +300,10 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [aiLang, translationLang, currentMessages, activeConvId, conversations, stats.sparks, isPro]);
+  }, [aiLang, translationLang, currentMessages, activeConvId, conversations, stats.sparks, isPro, isAuthenticated, guestInfo]);
 
   const handleDeepDive = useCallback(async (messageId: string, contextText: string) => {
+    if (!isAuthenticated) { setShowSignupModal(true); return; }
     if (!isPro) { setShowProModal(true); return; }
     if (stats.sparks < DEEP_DIVE_COST) return;
 
@@ -265,7 +334,7 @@ const App: React.FC = () => {
         messages: conv.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: false } : m)
       } : conv));
     }
-  }, [activeConvId, aiLang, isPro, stats.sparks]);
+  }, [activeConvId, aiLang, isPro, stats.sparks, isAuthenticated]);
 
   const handleArchiveLesson = useCallback((lesson: CoachLesson) => {
     setStats(prev => {
@@ -299,36 +368,42 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex h-full relative font-sans ${isRtl ? 'font-arabic' : ''} bg-slate-50 text-slate-900`}>
-      <Sidebar 
-        language={systemLang}
-        conversations={conversations}
-        activeConversationId={activeConvId}
-        onNewChat={handleNewChat}
-        onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); if(window.innerWidth < 1024) setIsSidebarExpanded(false); }}
-        onDeleteChat={handleDeleteChat}
-        onRenameChat={handleRenameChat}
-        onDeleteAllChats={() => setShowDeleteAllConfirm(true)}
-        archivedLessons={stats.archivedLessons}
-        onSelectLesson={(lesson) => setActiveLesson(lesson)}
-        isPro={isPro}
-        onUpgradeClick={() => setShowProModal(true)}
-        isExpanded={isSidebarExpanded}
-        onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
-        translateCat={(cat) => (t.catMap as any)[cat] || cat}
-        onOpenSettings={() => setShowSettingsModal(true)}
-        onOpenFeedback={() => setShowFeedbackModal(true)}
-      />
+      {/* Hide Sidebar for guests */}
+      {isAuthenticated && (
+        <Sidebar 
+          language={systemLang}
+          conversations={conversations}
+          activeConversationId={activeConvId}
+          onNewChat={handleNewChat}
+          onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); if(window.innerWidth < 1024) setIsSidebarExpanded(false); }}
+          onDeleteChat={handleDeleteChat}
+          onRenameChat={handleRenameChat}
+          onDeleteAllChats={() => setShowDeleteAllConfirm(true)}
+          archivedLessons={stats.archivedLessons}
+          onSelectLesson={(lesson) => setActiveLesson(lesson)}
+          isPro={isPro}
+          onUpgradeClick={() => setShowProModal(true)}
+          isExpanded={isSidebarExpanded}
+          onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)}
+          translateCat={(cat) => (t.catMap as any)[cat] || cat}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          onOpenFeedback={() => setShowFeedbackModal(true)}
+        />
+      )}
 
       <div className="flex flex-col flex-1 h-full min-w-0 overflow-hidden relative">
         <Header 
           language={systemLang} 
           sparks={stats.sparks}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
           isPro={isPro}
           hasNotifications={isPro && pendingMissionsCount > 0}
-          isSidebarExpanded={isSidebarExpanded}
+          isSidebarExpanded={isAuthenticated ? isSidebarExpanded : false}
           onToggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)}
+          isAuthenticated={isAuthenticated}
+          onSignupClick={handleSignupRedirect}
+          onLoginClick={handleSignupRedirect}
         />
 
         <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth flex flex-col relative">
@@ -347,8 +422,9 @@ const App: React.FC = () => {
                       language={systemLang} 
                       translationLanguage={translationLang}
                       isPro={isPro} 
-                      onLockClick={() => setShowProModal(true)}
+                      onLockClick={isAuthenticated ? () => setShowProModal(true) : () => setShowSignupModal(true)}
                       onDeepDive={handleDeepDive}
+                      isAuthenticated={isAuthenticated}
                     />
                   ))}
                   {isLoading && (
@@ -377,13 +453,23 @@ const App: React.FC = () => {
 
         {activeTab === 'practice' && (
           <footer className="shrink-0">
-            <InputArea onSend={handleSendMessage} isLoading={isLoading} language={systemLang} sparks={stats.sparks} isPro={isPro} />
+            <InputArea 
+              onSend={handleSendMessage} 
+              isLoading={isLoading} 
+              language={systemLang} 
+              sparks={stats.sparks} 
+              isPro={isPro} 
+              isAuthenticated={isAuthenticated}
+              guestInfo={guestInfo}
+            />
           </footer>
         )}
       </div>
 
       {showProModal && <ProModal language={systemLang} onClose={() => setShowProModal(false)} onUpgrade={handleUpgradeToPro} />}
       
+      {showSignupModal && <SignupModal language={systemLang} onClose={() => setShowSignupModal(false)} />}
+
       {showSettingsModal && (
         <SettingsModal 
           language={systemLang}

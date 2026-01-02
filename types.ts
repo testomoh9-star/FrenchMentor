@@ -67,6 +67,13 @@ export interface Message {
   isDeepDiveLoading?: boolean;
 }
 
+export interface GuestInfo {
+  id: string;
+  corrections_used: number;
+  max_corrections: number;
+  created_at: number;
+}
+
 export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
   English: {
     navPractice: "Practice",
@@ -109,6 +116,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "Log out",
     aiExplainLang: "AI Explains in...",
     systemLang: "System Language",
+    login: "Log in",
+    signup: "Sign up for free",
+    guestMode: "Guest Mode",
+    correctionsLeft: "{n} correction(s) remaining",
     catMap: {
       Grammar: "Grammar",
       Conjugation: "Conjugation",
@@ -173,6 +184,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "Se déconnecter",
     aiExplainLang: "L'IA explique en...",
     systemLang: "Langue du système",
+    login: "Se connecter",
+    signup: "S'inscrire gratuitement",
+    guestMode: "Mode invité",
+    correctionsLeft: "{n} correction(s) restante(s)",
     catMap: {
       Grammar: "Grammaire",
       Conjugaison: "Conjugaison",
@@ -237,6 +252,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "تسجيل الخروج",
     aiExplainLang: "الذكاء الاصطناعي يشرح بـ...",
     systemLang: "لغة النظام",
+    login: "تسجيل الدخول",
+    signup: "سجل مجاناً",
+    guestMode: "وضع الزائر",
+    correctionsLeft: "{n} تصحيحات متبقية",
     catMap: {
       Grammar: "قواعد",
       Conjugation: "تصريف الأفعال",
@@ -301,6 +320,10 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     logout: "Cerrar sesión",
     aiExplainLang: "La IA explica en...",
     systemLang: "Idioma del sistema",
+    login: "Iniciar sesión",
+    signup: "Regístrate gratis",
+    guestMode: "Modo invitado",
+    correctionsLeft: "{n} corrección(es) restante(s)",
     catMap: {
       Grammar: "Gramática",
       Conjugación: "Conjugación",

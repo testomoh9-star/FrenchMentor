@@ -11,9 +11,10 @@ interface MessageBubbleProps {
   isPro?: boolean;
   onLockClick?: () => void;
   onDeepDive?: (messageId: string, contextText: string) => void;
+  isAuthenticated: boolean;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, translationLanguage, isPro, onLockClick, onDeepDive }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, translationLanguage, isPro, onLockClick, onDeepDive, isAuthenticated }) => {
   const isUser = message.role === 'user';
   const [isPlaying, setIsPlaying] = useState(false);
   const t = UI_TRANSLATIONS[language];
@@ -52,7 +53,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
   const isFrenchTranslation = translationLanguage === 'French';
 
   const handlePlayAudio = async () => {
-    if (!isPro) { onLockClick?.(); return; }
+    if (!isAuthenticated || !isPro) { onLockClick?.(); return; }
     if (!data || isPlaying) return;
     setIsPlaying(true);
     try { await playFrenchTTS(data.correctedFrench); } catch (e) { console.error(e); } finally { setIsPlaying(false); }
@@ -96,7 +97,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
               className={`p-3 rounded-xl transition-all text-white shrink-0 ml-4 relative ${isPlaying ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30 active:scale-95'}`}
             >
               {isPlaying ? <Loader2 size={20} className="animate-spin" /> : <Volume2 size={20} />}
-              {!isPro && <div className="absolute -top-1 -right-1 bg-gradient-to-br from-cyan-400 to-indigo-500 rounded-full p-0.5 border border-white"><Lock size={8} fill="currentColor" /></div>}
+              {(!isAuthenticated || !isPro) && <div className="absolute -top-1 -right-1 bg-gradient-to-br from-cyan-400 to-indigo-500 rounded-full p-0.5 border border-white"><Lock size={8} fill="currentColor" /></div>}
             </button>
           </div>
 
@@ -125,7 +126,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
                 <p className={`text-sm text-slate-700 leading-relaxed font-medium ${isRtl ? 'text-right' : 'text-left'}`}>{data.tutorNotes}</p>
               </div>
 
-              {isPro && !data.deepDive && (
+              {isAuthenticated && isPro && !data.deepDive && (
                 <button 
                   onClick={() => onDeepDive?.(message.id, contextForDive)}
                   disabled={message.isDeepDiveLoading}
@@ -174,7 +175,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, language, transl
                    })}
                 </div>
                 <div className="mt-8 bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex items-center gap-3">
-                  <Sparkles size={16} className="text-indigo-600" />
                   <span className="text-[10px] font-black uppercase text-indigo-700 tracking-wider">Lesson Complete • Concept Mastered</span>
                 </div>
               </div>

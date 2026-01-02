@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Zap, MessageSquare, Brain, Crown, Menu } from 'lucide-react';
+import { Zap, MessageSquare, Brain, Crown, Menu, LogIn, UserPlus, Lock } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS } from '../types';
 
 interface HeaderProps {
@@ -12,6 +12,9 @@ interface HeaderProps {
   hasNotifications?: boolean;
   isSidebarExpanded: boolean;
   onToggleSidebar: () => void;
+  isAuthenticated: boolean;
+  onSignupClick: () => void;
+  onLoginClick: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -22,12 +25,15 @@ const Header: React.FC<HeaderProps> = ({
   isPro,
   hasNotifications,
   isSidebarExpanded,
-  onToggleSidebar
+  onToggleSidebar,
+  isAuthenticated,
+  onSignupClick,
+  onLoginClick
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
 
-  // Official Logo Assets - Single SVG optimized for space
+  // Official Logo Assets
   const LexiBranding = () => {
     const commonDefs = (
       <defs>
@@ -58,7 +64,6 @@ const Header: React.FC<HeaderProps> = ({
 
     return (
       <div className="flex items-center gap-1 sm:gap-2 h-7 sm:h-9">
-        {/* Full Logo - Desktop */}
         <svg viewBox="0 0 671.29 169.23" className="h-full w-auto hidden sm:block">
           {commonDefs}
           <g id="Icon">
@@ -69,13 +74,12 @@ const Header: React.FC<HeaderProps> = ({
           {textPath}
         </svg>
 
-        {/* Text Only - Mobile */}
         <svg viewBox="250 0 421.29 169.23" className="h-full w-auto block sm:hidden">
           {commonDefs}
           {textPath}
         </svg>
 
-        {isPro && (
+        {isAuthenticated && isPro && (
           <span className="flex-shrink-0 mb-auto text-[7px] sm:text-[8px] font-black text-white bg-gradient-to-r from-cyan-400 to-indigo-500 px-1 sm:px-1.5 py-0.5 rounded shadow-sm">
             <Crown size={6} fill="currentColor" className="inline mr-0.5 sm:mr-1" /> {t.proLabel}
           </span>
@@ -88,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-2 sm:px-4 py-2 sm:py-2.5 z-50 flex items-center justify-between shadow-sm shrink-0 sticky top-0 safe-top">
       <div className={`flex items-center gap-1 sm:gap-3 min-w-0 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
         
-        {!isSidebarExpanded && (
+        {isAuthenticated && !isSidebarExpanded && (
           <button 
             onClick={onToggleSidebar}
             className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors flex items-center justify-center"
@@ -114,19 +118,41 @@ const Header: React.FC<HeaderProps> = ({
         >
           <Brain size={14} className="sm:w-4 sm:h-4" />
           <span className="hidden sm:inline">{t.navBrain}</span>
-          {hasNotifications && activeTab !== 'brain' && (
+          {!isAuthenticated && (
+             <div className="absolute -top-1 -right-1 bg-white p-0.5 rounded-full shadow-sm">
+                <Lock size={10} className="text-slate-400" />
+             </div>
+          )}
+          {isAuthenticated && hasNotifications && activeTab !== 'brain' && (
             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-red-500 border-2 border-slate-100 shadow-sm"></span>
           )}
         </button>
       </nav>
 
       <div className={`flex items-center gap-1.5 sm:gap-3 shrink-0 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`} dir={isRtl ? 'rtl' : 'ltr'}>
-        <div className="relative group">
-           <div className={`flex items-center gap-1 px-1.5 sm:px-3 py-1.5 rounded-full border shadow-sm transition-all ${isPro ? 'bg-cyan-50 border-cyan-100 text-indigo-700' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
-              <Zap size={10} fill="currentColor" className={`sm:w-3 sm:h-3 ${isPro ? 'text-cyan-500' : 'text-blue-600'}`} />
-              <span className="text-[10px] sm:text-sm font-black">{sparks}</span>
-           </div>
-        </div>
+        {!isAuthenticated ? (
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button 
+              onClick={onLoginClick}
+              className="px-2.5 sm:px-4 py-2 text-[10px] sm:text-sm font-black text-slate-600 hover:text-slate-900 transition-colors flex items-center gap-1"
+            >
+              <LogIn size={14} className="hidden sm:inline" /> {t.login}
+            </button>
+            <button 
+              onClick={onSignupClick}
+              className="px-3 sm:px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] sm:text-sm font-black hover:bg-blue-700 transition-all shadow-sm flex items-center gap-1.5"
+            >
+              <UserPlus size={14} className="hidden sm:inline" /> {t.signup}
+            </button>
+          </div>
+        ) : (
+          <div className="relative group">
+            <div className={`flex items-center gap-1 px-1.5 sm:px-3 py-1.5 rounded-full border shadow-sm transition-all ${isPro ? 'bg-cyan-50 border-cyan-100 text-indigo-700' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
+                <Zap size={10} fill="currentColor" className={`sm:w-3 sm:h-3 ${isPro ? 'text-cyan-500' : 'text-blue-600'}`} />
+                <span className="text-[10px] sm:text-sm font-black">{sparks}</span>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
