@@ -122,6 +122,14 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     loginCTA: "Log In",
     guestMode: "Guest Mode",
     correctionsLeft: "{n} correction(s) remaining",
+    proMasterPatterns: "Master your patterns with Elite Coach.",
+    proJoin: "Join Pro",
+    proMember: "Pro Member",
+    acceleratedLearning: "Accelerated Learning",
+    resetBrainTitle: "Linguistic History",
+    resetBrainBtn: "Reset Linguistic Brain",
+    resetBrainDesc: "Resetting your brain will wipe all recorded linguistic patterns, missions, and archived lessons. This cannot be undone.",
+    resetForever: "Reset Forever",
     auth: {
       login: {
         title: "Welcome Back",
@@ -209,6 +217,14 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     loginCTA: "Se connecter",
     guestMode: "Mode invité",
     correctionsLeft: "{n} correction(s) restante(s)",
+    proMasterPatterns: "Maîtrisez vos schémas avec le Coach Elite.",
+    proJoin: "Devenir Pro",
+    proMember: "Membre Pro",
+    acceleratedLearning: "Apprentissage Accéléré",
+    resetBrainTitle: "Historique Linguistique",
+    resetBrainBtn: "Réinitialiser le Cerveau",
+    resetBrainDesc: "La réinitialisation effacera tous vos schémas linguistiques, missions et leçons archivées. Cette action est irréversible.",
+    resetForever: "Réinitialiser pour toujours",
     auth: {
       login: {
         title: "Bon retour !",
@@ -296,6 +312,14 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     loginCTA: "تسجيل الدخول",
     guestMode: "وضع الزائر",
     correctionsLeft: "{n} تصحيحات متبقية",
+    proMasterPatterns: "أتقن أنماطك مع المدرب النخبة.",
+    proJoin: "انضم إلى برو",
+    proMember: "عضو برو",
+    acceleratedLearning: "تعلم متسارع",
+    resetBrainTitle: "السجل اللغوي",
+    resetBrainBtn: "إعادة ضبط الدماغ",
+    resetBrainDesc: "سيؤدي إعادة الضبط إلى مسح جميع الأنماط اللغوية والمهام والدروس المؤرشفة. لا يمكن التراجع عن هذا الإجراء.",
+    resetForever: "إعادة ضبط للأبد",
     auth: {
       login: {
         title: "أهلاً بعودتك",
@@ -383,6 +407,14 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
     loginCTA: "Iniciar sesión",
     guestMode: "Modo invitado",
     correctionsLeft: "{n} corrección(es) restante(s)",
+    proMasterPatterns: "Domina tus patrones con el Coach Élite.",
+    proJoin: "Ser Pro",
+    proMember: "Miembro Pro",
+    acceleratedLearning: "Aprendizaje Acelerado",
+    resetBrainTitle: "Historial Lingüístico",
+    resetBrainBtn: "Reiniciar Cerebro",
+    resetBrainDesc: "Reiniciar borrará todos tus patrones lingüísticos, misiones y lecciones archivadas. Esta acción no se puede deshacer.",
+    resetForever: "Reiniciar para siempre",
     auth: {
       login: {
         title: "Bienvenido de nuevo",
@@ -418,7 +450,7 @@ export const UI_TRANSLATIONS: Record<SystemLanguage, any> = {
       "C'est un bon idée",
       "Je n'ai pas de l'argent",
       "Je cherche pour mon chat",
-      "Je suis fini avec mon travail",
+      "Je suis fini avec mon trabajo",
       "Est-ce que tu peux m'aider avec ça?",
       "S'il vous plaît, parlez más lentamente"
     ]

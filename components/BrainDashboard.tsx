@@ -118,9 +118,9 @@ const BrainDashboard: React.FC<BrainDashboardProps> = ({
             <div className="bg-gradient-to-br from-cyan-500 to-indigo-600 p-6 rounded-3xl text-white max-w-xs relative overflow-hidden group shadow-xl shadow-indigo-100/50">
               <div className="relative z-10">
                  <div className="bg-white/20 px-2 py-0.5 rounded text-[10px] font-black w-fit mb-3">{t.proLabel}</div>
-                 <h4 className="font-bold text-lg mb-4">Master your patterns with Elite Coach.</h4>
+                 <h4 className="font-bold text-lg mb-4">{t.proMasterPatterns}</h4>
                  <button onClick={onUpgradeClick} className="w-full bg-white text-indigo-600 py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:bg-indigo-50 active:scale-95 transition-all">
-                   {t.getPro} <ArrowRight size={14} />
+                   {t.proJoin} <ArrowRight size={14} />
                  </button>
               </div>
               <Crown size={120} className="absolute -bottom-8 -right-8 opacity-10 rotate-12" />

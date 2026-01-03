@@ -347,8 +347,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <Crown size={14} className="text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-black text-white truncate">Pro Member</p>
-                  <p className="text-[8px] text-white/30 uppercase font-black">Accelerated Learning</p>
+                  <p className="text-[11px] font-black text-white truncate">{t.proMember}</p>
+                  <p className="text-[8px] text-white/30 uppercase font-black">{t.acceleratedLearning}</p>
                 </div>
               </div>
             ) : (
@@ -358,7 +358,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div className={`flex items-center gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
                   <Crown size={14} className="text-white/80 group-hover:text-white" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Join Pro</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{t.proJoin}</span>
                 </div>
                 <ChevronRight size={14} className={`text-white/50 group-hover:text-white ${isRtl ? 'rotate-180' : ''}`} />
               </button>

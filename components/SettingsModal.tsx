@@ -104,7 +104,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <section className="pt-6 border-t border-slate-100">
                <div className="flex items-center gap-2 mb-4">
                   <Trash2 size={16} className="text-red-500" />
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Linguistic History</label>
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.resetBrainTitle}</label>
                </div>
                
                {showResetConfirm ? (
@@ -112,7 +112,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="flex items-start gap-3 mb-4">
                        <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
                        <p className="text-xs font-bold text-red-900 leading-relaxed">
-                          Resetting your brain will wipe all recorded linguistic patterns, missions, and archived lessons. This cannot be undone.
+                          {t.resetBrainDesc}
                        </p>
                     </div>
                     <div className="flex gap-2">
@@ -121,13 +121,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         disabled={isResetting}
                         className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-xs font-black hover:bg-red-700 transition-all flex items-center justify-center gap-2"
                        >
-                         {isResetting ? <Loader2 size={14} className="animate-spin" /> : "Reset Forever"}
+                         {isResetting ? <Loader2 size={14} className="animate-spin" /> : t.resetForever}
                        </button>
                        <button 
                         onClick={() => setShowResetConfirm(false)}
                         className="flex-1 bg-white border border-red-200 text-red-600 py-2.5 rounded-xl text-xs font-black hover:bg-red-50"
                        >
-                         Cancel
+                         {t.cancel}
                        </button>
                     </div>
                  </div>
@@ -136,7 +136,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={() => setShowResetConfirm(true)}
                   className="w-full flex items-center justify-between p-4 rounded-2xl border border-red-100 bg-red-50/30 hover:bg-red-50 text-red-600 transition-all group"
                  >
-                    <span className="text-xs font-bold">Reset Linguistic Brain</span>
+                    <span className="text-xs font-bold">{t.resetBrainBtn}</span>
                     <Trash2 size={16} className="opacity-40 group-hover:opacity-100 transition-opacity" />
                  </button>
                )}
@@ -149,7 +149,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             onClick={onClose}
             className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all shadow-lg shadow-slate-200"
           >
-            {isRtl ? 'حفظ' : 'Save Changes'}
+            {isRtl ? 'حفظ' : (language === 'French' ? 'Enregistrer' : (language === 'Spanish' ? 'Guardar' : 'Save Changes'))}
           </button>
         </div>
       </div>
