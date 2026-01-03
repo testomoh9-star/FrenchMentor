@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { X, Globe, MessageSquare, Languages } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Globe, MessageSquare, Languages, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import { SystemLanguage, SupportLanguage, UI_TRANSLATIONS } from '../types';
 
 interface SettingsModalProps {
@@ -11,13 +11,25 @@ interface SettingsModalProps {
   onSetSystemLang: (lang: SystemLanguage) => void;
   onSetAiLang: (lang: SupportLanguage) => void;
   onSetTranslationLang: (lang: SupportLanguage) => void;
+  onResetBrain?: () => Promise<void>;
+  isAuthenticated?: boolean | null;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
-  language, aiLang, translationLang, onClose, onSetSystemLang, onSetAiLang, onSetTranslationLang
+  language, aiLang, translationLang, onClose, onSetSystemLang, onSetAiLang, onSetTranslationLang, onResetBrain, isAuthenticated
 }) => {
   const t = UI_TRANSLATIONS[language];
   const isRtl = language === 'Arabic';
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (!onResetBrain) return;
+    setIsResetting(true);
+    await onResetBrain();
+    setIsResetting(false);
+    setShowResetConfirm(false);
+  };
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
@@ -66,7 +78,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-slate-400 mt-2 italic">Language for the small translation/alternative under corrections.</p>
           </section>
 
           {/* System UI Language */}
@@ -87,6 +98,50 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               ))}
             </div>
           </section>
+
+          {/* Reset Brain - Only for Authenticated Users */}
+          {isAuthenticated && (
+            <section className="pt-6 border-t border-slate-100">
+               <div className="flex items-center gap-2 mb-4">
+                  <Trash2 size={16} className="text-red-500" />
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Linguistic History</label>
+               </div>
+               
+               {showResetConfirm ? (
+                 <div className="bg-red-50 p-4 rounded-2xl border border-red-100 animate-in slide-in-from-top-2">
+                    <div className="flex items-start gap-3 mb-4">
+                       <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
+                       <p className="text-xs font-bold text-red-900 leading-relaxed">
+                          Resetting your brain will wipe all recorded linguistic patterns, missions, and archived lessons. This cannot be undone.
+                       </p>
+                    </div>
+                    <div className="flex gap-2">
+                       <button 
+                        onClick={handleReset}
+                        disabled={isResetting}
+                        className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-xs font-black hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                       >
+                         {isResetting ? <Loader2 size={14} className="animate-spin" /> : "Reset Forever"}
+                       </button>
+                       <button 
+                        onClick={() => setShowResetConfirm(false)}
+                        className="flex-1 bg-white border border-red-200 text-red-600 py-2.5 rounded-xl text-xs font-black hover:bg-red-50"
+                       >
+                         Cancel
+                       </button>
+                    </div>
+                 </div>
+               ) : (
+                 <button 
+                  onClick={() => setShowResetConfirm(true)}
+                  className="w-full flex items-center justify-between p-4 rounded-2xl border border-red-100 bg-red-50/30 hover:bg-red-50 text-red-600 transition-all group"
+                 >
+                    <span className="text-xs font-bold">Reset Linguistic Brain</span>
+                    <Trash2 size={16} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+                 </button>
+               )}
+            </section>
+          )}
         </div>
 
         <div className="p-6 bg-slate-50 border-t border-slate-100">

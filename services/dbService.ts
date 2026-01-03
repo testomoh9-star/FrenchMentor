@@ -91,5 +91,14 @@ export const dbService = {
       data: lesson,
       created_at: new Date(lesson.timestamp).toISOString()
     });
+  },
+
+  async resetLinguisticHistory(userId: string) {
+    // Delete all mistakes and lessons for the user
+    // Fixed: Removed spark reset to protect user's subscription/balance
+    await Promise.all([
+      supabase.from('mistake_records').delete().eq('user_id', userId),
+      supabase.from('lessons').delete().eq('user_id', userId)
+    ]);
   }
 };

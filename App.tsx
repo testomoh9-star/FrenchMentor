@@ -303,25 +303,34 @@ const App: React.FC = () => {
         setGuestInfo(prev => prev ? { ...prev, corrections_used: prev.corrections_used + 1 } : null);
       }
 
-      if (data.corrections && data.corrections.length > 0) {
-        setStats(prev => {
-          const newSparks = isAuthenticated ? Math.max(0, prev.sparks - cost) : prev.sparks;
-          const newCats = { ...prev.categories };
-          const newHist = [...prev.history];
+      // Charge spark for every interaction regardless of mistakes
+      setStats(prev => {
+        const newSparks = isAuthenticated ? Math.max(0, prev.sparks - cost) : prev.sparks;
+        const newCats = { ...prev.categories };
+        const newHist = [...prev.history];
+        
+        if (data.corrections && data.corrections.length > 0) {
           data.corrections.forEach(c => {
             newCats[c.category] = (Number(newCats[c.category]) || 0) + 1;
             const rec = { original: c.original, corrected: c.corrected, category: c.category, timestamp: Date.now() };
             newHist.push(rec);
             if (isAuthenticated && userId) dbService.saveMistake(userId, rec);
           });
+        }
 
-          if (isAuthenticated && userId) {
-            dbService.updateProfile(userId, { sparks: newSparks });
-          }
+        if (isAuthenticated && userId) {
+          dbService.updateProfile(userId, { sparks: newSparks });
+        }
 
-          return { ...prev, sparks: newSparks, totalCorrections: prev.totalCorrections + data.corrections.length, categories: newCats, history: newHist };
-        });
-      }
+        return { 
+          ...prev, 
+          sparks: newSparks, 
+          totalCorrections: prev.totalCorrections + (data.corrections?.length || 0), 
+          categories: newCats, 
+          history: newHist 
+        };
+      });
+      
     } catch (error: any) {
       console.error(error);
     } finally {
@@ -338,6 +347,43 @@ const App: React.FC = () => {
       return { ...prev, archivedLessons: [...prev.archivedLessons, { ...lesson, timestamp: Date.now() }] };
     });
   }, [isAuthenticated, userId]);
+
+  const handleResetBrain = async () => {
+    if (userId && isAuthenticated) {
+      setIsSyncing(true);
+      try {
+        await dbService.resetLinguisticHistory(userId);
+        setStats(prev => ({
+          ...prev,
+          totalCorrections: 0,
+          categories: {},
+          history: [],
+          archivedLessons: [],
+          // Removed hardcoded sparks: 8 to preserve plan/balance
+        }));
+      } catch (e) {
+        console.error("Reset brain error:", e);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  };
+
+  const handleDeleteConversation = async (id: string) => {
+    if (isAuthenticated && userId) {
+      await dbService.deleteConversation(id);
+    }
+    setConversations(prev => prev.filter(c => c.id !== id));
+    if (activeConvId === id) setActiveConvId(null);
+  };
+
+  const handleDeleteAllConversations = async () => {
+    if (isAuthenticated && userId) {
+      await dbService.deleteAllConversations(userId);
+    }
+    setConversations([]);
+    setActiveConvId(null);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -375,7 +421,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-full relative font-sans ${systemLang === 'Arabic' ? 'font-arabic' : ''} bg-slate-50 text-slate-900`}>
+    <div className={`flex h-full relative font-sans ${systemLang === 'Arabic' ? 'font-arabic' : ''} bg-slate-50 text-slate-900 overflow-hidden`}>
       {isAuthenticated && (
         <Sidebar 
           language={systemLang}
@@ -384,9 +430,9 @@ const App: React.FC = () => {
           activeConversationId={activeConvId}
           onNewChat={() => { setActiveConvId(null); setActiveTab('practice'); }}
           onSelectChat={(id) => { setActiveConvId(id); setActiveTab('practice'); }}
-          onDeleteChat={(id) => { dbService.deleteConversation(id); setConversations(prev => prev.filter(c => c.id !== id)); }}
+          onDeleteChat={handleDeleteConversation}
           onRenameChat={(id, title) => { setConversations(prev => prev.map(c => c.id === id ? {...c, title} : c)); }}
-          onDeleteAllChats={() => { if(userId) dbService.deleteAllConversations(userId); setConversations([]); }}
+          onDeleteAllChats={handleDeleteAllConversations}
           archivedLessons={stats.archivedLessons}
           onSelectLesson={(lesson) => setActiveLesson(lesson)}
           isPro={isPro}
@@ -485,7 +531,9 @@ const App: React.FC = () => {
           onClose={() => setShowSettingsModal(false)} 
           onSetSystemLang={handleSetSystemLang} 
           onSetAiLang={handleSetAiLang} 
-          onSetTranslationLang={handleSetTranslationLang} 
+          onSetTranslationLang={handleSetTranslationLang}
+          onResetBrain={handleResetBrain}
+          isAuthenticated={isAuthenticated}
         />
       )}
       {showFeedbackModal && <FeedbackModal language={systemLang} onClose={() => setShowFeedbackModal(false)} />}

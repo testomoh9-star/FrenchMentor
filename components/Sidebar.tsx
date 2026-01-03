@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { BookOpen, Lightbulb, ChevronRight, Crown, Lock, Settings, MessageCircle, LogOut, Sparkles, PanelLeft, SquarePen, MoreVertical, Edit3, Trash2, Check } from 'lucide-react';
+import { BookOpen, Lightbulb, ChevronRight, Crown, Lock, Settings, MessageCircle, LogOut, Sparkles, PanelLeft, SquarePen, MoreVertical, Edit3, Trash2, Check, AlertTriangle, X } from 'lucide-react';
 import { SystemLanguage, UI_TRANSLATIONS, Conversation, CoachLesson } from '../types';
 
 interface SidebarProps {
@@ -52,6 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [renamingValue, setRenamingValue] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | 'all' | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   const initials = useMemo(() => {
@@ -112,6 +113,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     setEditingId(null);
   };
 
+  const handleDeleteAll = () => {
+    onDeleteAllChats();
+    setDeleteConfirmId(null);
+  };
+
+  const handleDeleteSingle = (id: string) => {
+    onDeleteChat(id);
+    setDeleteConfirmId(null);
+    setMenuOpenId(null);
+  };
+
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
   return (
@@ -120,17 +132,38 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80]" onClick={onToggle} />
       )}
 
+      {/* Global Delete All Confirmation */}
+      {deleteConfirmId === 'all' && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
+           <div className={`bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200 ${isRtl ? 'font-arabic text-right' : 'text-left'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+              <div className="bg-red-50 w-14 h-14 rounded-2xl flex items-center justify-center text-red-600 mb-6">
+                 <AlertTriangle size={28} />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2">{t.deleteConfirmTitle}</h3>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">{t.deleteConfirmDesc}</p>
+              <div className="flex flex-col gap-3">
+                 <button onClick={handleDeleteAll} className="w-full bg-red-600 text-white py-4 rounded-xl font-black text-sm hover:bg-red-700 transition-all active:scale-95">
+                    {t.confirmDeletion}
+                 </button>
+                 <button onClick={() => setDeleteConfirmId(null)} className="w-full bg-slate-100 text-slate-600 py-4 rounded-xl font-black text-sm hover:bg-slate-200 transition-all">
+                    {t.cancel}
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
       <aside 
         className={`
           flex h-full bg-slate-950 border-r border-slate-800 transition-all duration-300 z-[90]
           ${isExpanded ? 'w-72 sm:w-80' : 'w-16'}
-          ${isMobile ? `fixed inset-y-0 left-0 ${isExpanded ? 'translate-x-0' : '-translate-x-full'}` : 'relative'}
-          ${isRtl ? 'font-arabic flex-row-reverse' : 'flex-row'}
+          ${isMobile ? `fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} ${isExpanded ? 'translate-x-0' : (isRtl ? 'translate-x-full' : '-translate-x-full')}` : 'relative'}
+          ${isRtl ? 'font-arabic flex-row-reverse border-l' : 'flex-row'}
         `}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {/* THE RAIL */}
-        <div className={`w-16 flex flex-col items-center py-4 shrink-0 ${isRtl ? 'border-l' : 'border-r'} border-slate-800/50`}>
+        <div className={`w-16 flex flex-col items-center py-4 shrink-0 border-slate-800/50 ${isRtl ? 'border-l' : 'border-r'}`}>
           <button onClick={onToggle} className="p-3 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all mb-8">
             <PanelLeft size={22} className={isRtl ? 'scale-x-[-1]' : ''} />
           </button>
@@ -144,6 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <div 
                 className={`absolute bottom-full mb-2 ${isRtl ? 'right-0' : 'left-0'} w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-[100] animate-in slide-in-from-bottom-2 duration-200 overflow-hidden`}
                 dir={isRtl ? 'rtl' : 'ltr'}
+                style={{ insetInlineStart: isRtl ? 'auto' : '0', insetInlineEnd: isRtl ? '0' : 'auto' }}
               >
                 <div className={`flex items-center gap-3 p-3 mb-2 border-b border-slate-100 ${isRtl ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
                   <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-black shrink-0">{initials}</div>
@@ -231,13 +265,32 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <MoreVertical size={14} />
                           </button>
                           {menuOpenId === conv.id && (
-                            <div className={`absolute ${isRtl ? 'left-full ml-1' : 'right-full mr-1'} top-0 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-[100] min-w-[140px] animate-in fade-in zoom-in-95 duration-150`}>
-                                <button onClick={(e) => handleStartRename(e, conv)} className={`w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
-                                  <Edit3 size={14} /> {isRtl ? 'إعادة تسمية' : 'Rename'}
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); onDeleteChat(conv.id); setMenuOpenId(null); }} className={`w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all ${isRtl ? 'flex-row-reverse' : ''}`}>
-                                  <Trash2 size={14} /> {isRtl ? 'حذف' : 'Delete'}
-                                </button>
+                            <div 
+                              className={`absolute ${isRtl ? 'left-full ml-2' : 'right-full mr-2'} top-0 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-[100] min-w-[160px] animate-in fade-in zoom-in-95 duration-150 overflow-hidden`}
+                              style={{ insetInlineStart: isRtl ? 'calc(100% + 8px)' : 'auto', insetInlineEnd: isRtl ? 'auto' : 'calc(100% + 8px)' }}
+                            >
+                                {deleteConfirmId === conv.id ? (
+                                  <div className="p-1 space-y-2">
+                                     <p className="text-[10px] font-black text-red-400 uppercase tracking-widest text-center px-2">Sure?</p>
+                                     <div className="flex gap-1">
+                                        <button onClick={() => handleDeleteSingle(conv.id)} className="flex-1 bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-all">
+                                           <Check size={14} className="mx-auto" />
+                                        </button>
+                                        <button onClick={() => setDeleteConfirmId(null)} className="flex-1 bg-slate-700 text-white p-2 rounded-lg hover:bg-slate-600 transition-all">
+                                           <X size={14} className="mx-auto" />
+                                        </button>
+                                     </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button onClick={(e) => handleStartRename(e, conv)} className={`w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-white/10 hover:text-white rounded-lg transition-all ${isRtl ? 'flex-row-reverse text-right' : 'text-left'}`}>
+                                      <Edit3 size={14} /> {isRtl ? 'إعادة تسمية' : 'Rename'}
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(conv.id); }} className={`w-full flex items-center gap-2 px-3 py-2.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10 rounded-lg transition-all ${isRtl ? 'flex-row-reverse text-right' : 'text-left'}`}>
+                                      <Trash2 size={14} /> {isRtl ? 'حذف' : 'Delete'}
+                                    </button>
+                                  </>
+                                )}
                             </div>
                           )}
                         </div>
@@ -246,7 +299,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   ))}
                   <div className="px-2 pt-2">
                     <button 
-                      onClick={onDeleteAllChats}
+                      onClick={() => setDeleteConfirmId('all')}
                       className="w-full py-2 px-4 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 text-[11px] font-bold transition-all text-center"
                     >
                       {t.deleteAll}
