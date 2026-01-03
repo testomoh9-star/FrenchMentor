@@ -31,6 +31,7 @@ const PRO_MONTHLY_MAX = 1000;
 const FREE_COST_PER_MSG = 2;
 const PRO_COST_PER_MSG = 1;
 const GUEST_MAX_CORRECTIONS = 2;
+const DEEP_DIVE_COST = 10;
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'practice' | 'brain'>('practice');
@@ -80,7 +81,7 @@ const App: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const t = UI_TRANSLATIONS[systemLang];
 
-  // Logic to determine if there are new missions (moved from BrainDashboard)
+  // Logic to determine if there are new missions
   const hasNewMissions = useMemo(() => {
     if (!isPro) return false;
     let found = false;
@@ -119,7 +120,6 @@ const App: React.FC = () => {
     
     if (isAuth) {
       loadUserData(session.user.id, session.user.email);
-      // Close any open auth modals on successful login
       setAuthModalMode(null);
     } else {
       loadGuestData();
@@ -194,7 +194,7 @@ const App: React.FC = () => {
     return conversations.find(c => c.id === activeConvId)?.messages || [];
   }, [activeConvId, conversations]);
 
-  // Refill Logic (Source of truth is Supabase for auth users)
+  // Refill Logic
   useEffect(() => {
     if (!isAuthenticated || !userId) return;
     const now = Date.now();
@@ -317,7 +317,6 @@ const App: React.FC = () => {
         setGuestInfo(prev => prev ? { ...prev, corrections_used: prev.corrections_used + 1 } : null);
       }
 
-      // Charge spark for every interaction regardless of mistakes
       setStats(prev => {
         const newSparks = isAuthenticated ? Math.max(0, prev.sparks - cost) : prev.sparks;
         const newCats = { ...prev.categories };
@@ -352,6 +351,65 @@ const App: React.FC = () => {
     }
   }, [aiLang, translationLang, currentMessages, activeConvId, conversations, stats.sparks, isPro, isAuthenticated, userId, guestInfo]);
 
+  const handleDeepDive = useCallback(async (messageId: string, context: string) => {
+    if (!isPro) {
+      setShowProModal(true);
+      return;
+    }
+    
+    if (stats.sparks < DEEP_DIVE_COST) {
+      setShowProModal(true);
+      return;
+    }
+
+    // Set loading state on the specific message
+    setConversations(prev => prev.map(c => ({
+      ...c,
+      messages: c.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: true } : m)
+    })));
+
+    try {
+      const lessonText = await generateDeepDive(context, aiLang);
+      
+      setConversations(prev => {
+        return prev.map(c => ({
+          ...c,
+          messages: c.messages.map(m => {
+            if (m.id === messageId) {
+              const data: CorrectionResponse = JSON.parse(m.content);
+              data.deepDive = lessonText;
+              const updatedContent = JSON.stringify(data);
+              
+              // Persist to Supabase if possible
+              if (isAuthenticated && userId) {
+                supabase.from('messages').update({ content: updatedContent }).eq('id', m.id).then();
+              }
+              
+              return { ...m, content: updatedContent, isDeepDiveLoading: false };
+            }
+            return m;
+          })
+        }));
+      });
+
+      // Deduct sparks
+      setStats(prev => {
+        const newSparks = Math.max(0, prev.sparks - DEEP_DIVE_COST);
+        if (isAuthenticated && userId) {
+          dbService.updateProfile(userId, { sparks: newSparks });
+        }
+        return { ...prev, sparks: newSparks };
+      });
+
+    } catch (err) {
+      console.error("Deep dive failed:", err);
+      setConversations(prev => prev.map(c => ({
+        ...c,
+        messages: c.messages.map(m => m.id === messageId ? { ...m, isDeepDiveLoading: false } : m)
+      })));
+    }
+  }, [isPro, stats.sparks, aiLang, isAuthenticated, userId]);
+
   const handleArchiveLesson = useCallback((lesson: CoachLesson) => {
     if (isAuthenticated && userId) {
       dbService.saveLesson(userId, lesson);
@@ -373,7 +431,6 @@ const App: React.FC = () => {
           categories: {},
           history: [],
           archivedLessons: [],
-          // Removed hardcoded sparks: 8 to preserve plan/balance
         }));
       } catch (e) {
         console.error("Reset brain error:", e);
@@ -416,7 +473,6 @@ const App: React.FC = () => {
     setShowProModal(false);
   };
 
-  // Initial Splash Screen
   if (isInitialLoading || isAuthenticated === null) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-slate-50 gap-6">
@@ -493,7 +549,7 @@ const App: React.FC = () => {
                       translationLanguage={translationLang}
                       isPro={isPro} 
                       onLockClick={isAuthenticated ? () => setShowProModal(true) : () => setAuthModalMode('limit')}
-                      onDeepDive={() => {}} 
+                      onDeepDive={handleDeepDive} 
                       isAuthenticated={isAuthenticated}
                     />
                   ))}
