@@ -3,13 +3,24 @@ import { supabase } from '../lib/supabase';
 import { Conversation, Message, MistakeRecord, CoachLesson, SystemLanguage, SupportLanguage } from '../types';
 
 export const dbService = {
-  async getProfile(userId: string) {
+  async getProfile(userId: string, email?: string | null) {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    
     if (error && error.code === 'PGRST116') {
-      // Profile doesn't exist, create it
-      const { data: newProfile, error: createError } = await supabase.from('profiles').insert([{ id: userId }]).select().single();
+      // Profile doesn't exist, create it with email
+      const { data: newProfile, error: createError } = await supabase.from('profiles').insert([{ 
+        id: userId, 
+        email: email || null 
+      }]).select().single();
       return newProfile;
     }
+
+    // If profile exists but email is null in DB (and we have it now), sync it
+    if (data && !data.email && email) {
+      const { data: updated } = await supabase.from('profiles').update({ email }).eq('id', userId).select().single();
+      return updated || data;
+    }
+
     return data;
   },
 

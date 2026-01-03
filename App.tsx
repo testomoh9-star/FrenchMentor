@@ -80,6 +80,20 @@ const App: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const t = UI_TRANSLATIONS[systemLang];
 
+  // Logic to determine if there are new missions (moved from BrainDashboard)
+  const hasNewMissions = useMemo(() => {
+    if (!isPro) return false;
+    let found = false;
+    Object.entries(stats.categories).forEach(([cat, count]) => {
+      const archivedCount = stats.archivedLessons.filter(l => l.category === cat).length;
+      const totalAvailable = Math.floor(Number(count) / 3);
+      if (totalAvailable > archivedCount) {
+        found = true;
+      }
+    });
+    return found;
+  }, [stats.categories, stats.archivedLessons, isPro]);
+
   // --- Auth Session Listener ---
   useEffect(() => {
     const initSession = async () => {
@@ -104,7 +118,7 @@ const App: React.FC = () => {
     setUserEmail(session?.user?.email || null);
     
     if (isAuth) {
-      loadUserData(session.user.id);
+      loadUserData(session.user.id, session.user.email);
       // Close any open auth modals on successful login
       setAuthModalMode(null);
     } else {
@@ -137,10 +151,10 @@ const App: React.FC = () => {
     setIsPro(localStorage.getItem(STORAGE_KEY_IS_PRO) === 'true');
   };
 
-  const loadUserData = async (uid: string) => {
+  const loadUserData = async (uid: string, email?: string) => {
     setIsSyncing(true);
     try {
-      const profile = await dbService.getProfile(uid);
+      const profile = await dbService.getProfile(uid, email);
       const convs = await dbService.getConversations(uid);
       const mistakes = await dbService.getMistakes(uid);
       const library = await dbService.getLessons(uid);
@@ -453,6 +467,7 @@ const App: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={(tab) => { if(!isAuthenticated && tab === 'brain') setAuthModalMode('limit'); else setActiveTab(tab); }}
           isPro={isPro}
+          hasNotifications={hasNewMissions}
           isSidebarExpanded={isAuthenticated ? isSidebarExpanded : false}
           onToggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)}
           isAuthenticated={isAuthenticated}
